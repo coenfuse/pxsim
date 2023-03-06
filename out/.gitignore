@@ -1,0 +1,12 @@
+# ignore everything
+*
+
+# except myself
+!.gitignore
+
+# and folder structure
+!bin/bin
+!build/obj
+!docs/txt
+!logs/log
+!release/pkg

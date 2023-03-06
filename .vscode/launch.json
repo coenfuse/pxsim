@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Python: Module",
+            "type": "python",
+            "request": "launch",
+            "module": "source",
+            "justMyCode": true,
+            "args": [
+               "--config", "${workspaceFolder}/config/pluxsim.config.jsonc",
+               "--logdir", "${workspaceFolder}/out/logs/",
+               "--stdout",
+               "--loglvl", "0"
+            ]
+        }
+    ]
+}

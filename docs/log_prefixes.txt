@@ -1,0 +1,218 @@
+PXS		- Abbr. for PluXSim
+PXSAPP	- Pluxsim application
+PXSCORE	- Pluxsim core runtime
+PXSIM		- Pluxsim internal simulator engine
+PXSIM-M	- Pluxsim internal machine thread
+PXSIM-MP	- Pluxsim internal machine production thread
+PXSHTTP	- Pluxsim web server
+PXSWAPI	- Pluxsim web server api router
+PXSCONF	- Pluxsim configuration handler
+PXSCIN	- Pluxsim console input controller
+
+Limit 10 characters
+-----------------------------------------------------------
+PXS	     - Abbr. for PluXSim
+--
+PXS-APP--- - Pluxsim application
+PXS-CORE-- - Pluxsim core runtime
+PXS-CONFIG - Pluxsim configuration handler
+PXS-ENGINE - Pluxsim internal simulator engine
+PXS-MACHIN - Pluxsim internal simulator's machine thread
+PXS-PRODXN - Pluxsim internal simulator's machine's production thread
+PXS-CINCTR - Pluxsim console input controller / handler
+PXS-WEBSVR - Pluxsim webserver (HTTP) thread(HTTP)
+PXS-WEBAPI - Pluxsim web API router
+
+-----------------------------------------------------------
+PXS	     - Abbr. for PluXSim
+--
+PXSAPP  - Pluxsim application
+PXSCORE - Pluxsim core runtime
+CONFIG  - Pluxsim configuration handler
+ENGINE  - Pluxsim internal simulator engine
+MACHIN  - Pluxsim internal simulator's machine thread
+PRODXN  - Pluxsim internal simulator's machine's production thread
+CINCTRL - Pluxsim console input controller / handler
+WEBSVR  - Pluxsim webserver (HTTP) thread(HTTP)
+WEBAPI  - Pluxsim web API router
+
+----------------------------------------------------------
+PXSAPP   - Pluxsim application
+PXSCORE  - Pluxsim core runtime
+CONFIG   - Pluxsim configuration handler
+ENGINE   - Pluxsim internal simulator engine
+ENGINE_M - Pluxsim internal simulator engine's machine component
+ENGINE_P - Pluxsim internal simulator engine's production component
+HTTPSVR  - Pluxsim HTTP web server
+HTTPAPI  - Pluxsim HTTP API layer and HTTP request handler
+CONSOLE  - Pluxsim console input controller / handler 
+
+
+
+2022-12-13 21:36:36.401 [D] : ENGINE   : adding production ( BELIAL -> TSUNA )
+2022-12-13 21:36:36.401 [D] : ENGINE-M : created machine (BELIAL)
+2022-12-13 21:36:36.402 [D] : ENGINE-M : ( BELIAL ) adding production for ( TSUNA )
+2022-12-13 21:36:36.402 [D] : ENGINE-P : [TSUNA] - created
+2022-12-13 21:36:36.402 [D] : ENGINE-M : ( BELIAL -> TSUNA ) production add SUCCESS
+2022-12-13 21:36:36.403 [I] : ENGINE   : production add SUCCESS ( BELIAL -> TSUNA )
+
+2022-12-13 21:36:36.401 [D] : ENGINE   : [BELIAL > TSUNA] - adding production
+2022-12-13 21:36:36.401 [D] : ENGINE-M : [BELIAL] - machine created
+2022-12-13 21:36:36.402 [D] : ENGINE-M : [BELIAL] - adding production 'TSUNA'
+2022-12-13 21:36:36.402 [D] : ENGINE-P : [TSUNA] - production created
+2022-12-13 21:36:36.402 [D] : ENGINE-M : [BELIAL > TSUNA] - production add SUCCESS
+2022-12-13 21:36:36.403 [I] : ENGINE   : [BELIAL > TSUNA] - production add SUCCESS
+
+2022-12-13 21:36:36.401 [D] : ENGINE   : adding production -------- BELIAL > TSUNA
+2022-12-13 21:36:36.401 [D] : ENGINE-M : created machine ---------- BELIAL
+2022-12-13 21:36:36.402 [D] : ENGINE-M : adding production -------- BELIAL > TSUNA 
+2022-12-13 21:36:36.402 [D] : ENGINE-P : created production ------- TSUNA
+2022-12-13 21:36:36.402 [D] : ENGINE-M : production add SUCCESS for BELIAL > TSUNA
+2022-12-13 21:36:36.403 [I] : ENGINE   : production add SUCCESS for BELIAL > TSUNA
+
+2022-12-13 21:36:36.401 [D] : ENGINE   : adding production -------- TSUNA in BELIAL
+2022-12-13 21:36:36.401 [D] : ENGINE-M : created machine ---------- BELIAL
+2022-12-13 21:36:36.402 [D] : ENGINE-M : adding production -------- TSUNA in BELIAL 
+2022-12-13 21:36:36.402 [D] : ENGINE-P : created production ------- TSUNA
+2022-12-13 21:36:36.402 [D] : ENGINE-M : production add SUCCESS for BELIAL > TSUNA
+2022-12-13 21:36:36.403 [I] : ENGINE   : production add SUCCESS for BELIAL > TSUNA
+
+
+
+2022-12-13 21:36:36.401 [D] : ENGINE   : adding new production for TSUNA in BELIAL
+-
+2022-12-13 21:36:36.402 [D] : ENGINE   : adding new machine BELIAL
+2022-12-13 21:36:36.401 [T] : ENGINE-M : created machine BELIAL
+- or -
+2022-12-13 21:36:36.402 [D] : ENGINE   : updating existing machine BELIAL
+-
+2022-12-13 21:36:36.402 [D] : ENGINE-M : adding new production TSUNA
+2022-12-13 21:36:36.402 [T] : ENGINE-P : created production TSUNA
+2022-12-13 21:36:36.402 [D] : ENGINE-M : production added for TSUNA in BELIAL
+2022-12-13 21:36:36.403 [I] : ENGINE   : production add SUCCESS for TSUNA in BELIAL
+
+
+
+TRACE :
+- 2022-12-13 21:36:36.401 [D] : ENGINE   : adding new production for TSUNA in BELIAL
+- 2022-12-13 21:36:36.402 [T] : ENGINE   : searching for BELIAL in machine list
+- 2022-12-13 21:36:36.402 [T] : ENGINE   : BELIAL was not found
+- 2022-12-13 21:36:36.402 [D] : ENGINE   : adding new machine BELIAL
+- 2022-12-13 21:36:36.402 [T] : MACHINE  : created new machine object BELIAL
+- 2022-12-13 21:36:36.402 [T] : MACHINE  : searching for TSUNA in production list for BELIAL
+- 2022-12-13 21:36:36.402 [T] : MACHINE  : TSUNA was not found
+- 2022-12-13 21:36:36.402 [D] : MACHINE  : adding new production TSUNA
+- 2022-12-13 21:36:36.402 [T] : PRODUCT  : created new production object TSUNA
+- 2022-12-13 21:36:36.402 [D] : MACHINE  : production added for TSUNA in BELIAL
+- 2022-12-13 21:36:36.403 [I] : ENGINE   : SUCCESS - production added for TSUNA in BELIAL
+
+DEBUG :
+2022-12-13 21:36:36.401 [D] : ENGINE   : adding new production for TSUNA in BELIAL
+2022-12-13 21:36:36.402 [D] : ENGINE   : adding new machine BELIAL
+2022-12-13 21:36:36.402 [D] : MACHINE  : adding new production TSUNA
+2022-12-13 21:36:36.402 [D] : MACHINE  : production added for TSUNA in BELIAL
+2022-12-13 21:36:36.403 [I] : ENGINE   : SUCCESS - production added for TSUNA in BELIAL
+
+INFO :
+2022-12-13 21:36:36.403 [I] : ENGINE   : SUCCESS - production added for TSUNA in BELIAL
+
+
+
+
+
+
+# ADD PROD
+================================================================================
+PRODUXN   - TRACE
+MACHINE   - DEBU
+SIMULATOR - INFO
+
+
+
+# REMOVE PROD
+================================================================================
+PRODUXN   - TRACE
+MACHINE   - DEBU
+SIMULATOR - INFO
+
+
+
+# START
+================================================================================
+PRODUXN   - TRACE
+MACHINE   - DEBUG
+SIMULATOR - INFO
+
+- SIMULATOR - DEBU - starting
+    A. MACHINE - DEBUG - starting machine_name
+        1. PRODUXN - TRACE - starting production for production_name
+        2. PRODUXN - DEBUG - startup SUCCESS / FAILURE for production_name
+        1. ---
+        2. ---
+    B. MACHINE - INFO - SUCCESS - productions started on machine name
+    C.
+    A. ---
+    B. ---
+    C.
+- SIMULATOR - INFO - SUCCESS / FAILED - simulation started
+
+
+
+# STOP
+================================================================================
+PRODUXN   - TRACE
+MACHINE   - DEBU
+SIMULATOR - INFO
+
+SIMULATOR - DEBU - stopping
+    A. MACHINE - DEBUG - stopping machine_name
+        1. PRODUXN - TRACE - stopping production_name
+        2. PRODUXN - DEBUG - stoppage SUCCESS / FAILURE for production_name
+        1. ---
+        2. ---
+    B. MACHINE - INFO - stoppage SUCCESS / FAILURE for machine_name
+    C.
+    A. ---
+    B. ---
+    C.
+SIMULATOR - INFO - stoppage SUCCESS / FAILED
+
+
+
+# RESUME
+================================================================================
+PRODUXN   - TRACE
+MACHINE   - DEBU
+SIMULATOR - INFO
+
+SIMULATOR - DEBU - resuming
+    A. MACHINE - DEBUG - resuming machine_name
+        1. PRODUXN - TRACE - resuming production_name
+        2. PRODUXN - DEBUG - resume SUCCESS / FAILURE for production_name
+        1. ---
+        2. ---
+    B. MACHINE - DEBUG - resume SUCCESS / FAILURE for machine_name
+    C.
+    A. ---
+    B. ---
+    C.
+SIMULATOR - INFO - resume SUCCESS / FAILED
+
+# PAUSE
+================================================================================
+PRODUXN   - TRACE
+MACHINE   - DEBU
+SIMULATOR - INFO
+
+SIMULATOR - DEBU - pausing
+    A. MACHINE - DEBUG - pausing machine_name
+        1. PRODUXN - TRACE - pausing production_name
+        2. PRODUXN - DEBUG - pause SUCCESS / FAILURE for production_name
+        1. ---
+        2. ---
+    B. MACHINE - DEBUG - pause SUCCESS / FAILURE for machine_name
+    C.
+    A. ---
+    B. ---
+    C.
+SIMULATOR - INFO - pause SUCCESS / FAILED
