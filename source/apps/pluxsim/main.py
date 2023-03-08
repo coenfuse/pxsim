@@ -232,8 +232,8 @@ class Pluxsim:
             if status == ERC.SUCCESS:
                 status = self.__web_server.start()
 
-            #if status == ERC.SUCCESS:
-            #    status = self.__modbus_server.start()
+            if status == ERC.SUCCESS:
+                status = self.__modbus_server.start()
 
             # ..
 
@@ -258,8 +258,8 @@ class Pluxsim:
             if status is ERC.SUCCESS:
                 status = self.__simulator.stop()
 
-            #if status == ERC.SUCCESS:
-            #    status = self.__modbus_server.stop()
+            if status == ERC.SUCCESS:
+                status = self.__modbus_server.stop()
 
             # ..
 
