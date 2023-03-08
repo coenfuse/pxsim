@@ -1,0 +1,136 @@
+# ------------------------------------------------------------------------------
+# pxsim.toml
+# Configuration settings for PluxSim <<VERSION>> application in TOML format
+# ------------------------------------------------------------------------------
+
+# Global application level properties
+[pxsim]
+    
+    # Specify whether you want to log the runtime details to a file
+    log.to_file = false
+
+    # Specify the logging level for pxsim runtime logs that are going to written
+    # to file
+    # TRACE : 0 (most verbose)
+    # DEBUG : 1
+    # INFO  : 2
+    # WARN  : 3
+    # ERROR : 4
+    # FATAL : 5
+    # --------------------------------------------------------------------------
+    log.level = 0
+
+    # Specify the directory where pxsim will save its runtime logs 
+    log.directory = ""
+
+
+# HTTP Web Server properties
+[http]
+
+    # set default host addresses for HTTP connection via internal http webserver
+    host.ip = "0.0.0.0"
+
+    # set default host port for HTTP connection via internal http webserver
+    host.port = 11204
+
+
+# Modbus slave properties
+[modbus]
+
+    # set default host address where this modbus slave will be accepting TCP 
+    # connections
+    host.ip = "0.0.0.0"
+
+    # set default port for this modbus slave
+    host.port = 51104
+
+    # Coil Register
+    register.co.func = 1        # NOT CURRENTLY USED (hard-coded to 2)
+    register.co.addr = 0x0      # starting address for coil registers
+    register.co.size = 10
+
+    # Direct Input Register
+    register.di.func = 2        # NOT CURRENTLY USED (hard-coded to 1)
+    register.di.addr = 0x0      # starting address for direct input registers
+    register.di.size = 10
+
+    # Holding Register
+    register.hr.func = 3        # NOT CURRENTLY USED (hard-coded to 3)
+    register.hr.addr = 0x0      # starting address for holding registers
+    register.hr.size = 10
+
+    # Input Register
+    register.ir.func = 4        # NOT CURRENTLY USED (hard-coded to 4)
+    register.ir.addr = 0x0      # starting address for input registers
+    register.ir.size = 10
+
+    # Slave device identification parameters
+    id.product.name = "PluxSim"
+    id.product.code = "pxsim"
+    id.product.model = "Pluxsim Modbus Slave"
+    id.product.version = "0.1.0"
+    id.vendor.name = "Power Profit"
+    id.vendor.url = ""
+
+
+# List out configuration for machines that will be simulated by the px_sim engine
+# This list must have atleast one machine and there is no limit on max number of
+# machines.
+[simulator]
+
+    [simulator.machine.grofera]
+        breakdown_pct = 20
+        production_count_init = 0
+        production_start_with = "apple"
+
+        # occupy modbus registers 
+        modbus.hr.lsw = 0       # Holding register at index 0 will host Least Significant Word
+        modbus.hr.msw = 1       # Holding register at index 1 will host Most Significant Word 
+
+        [simulator.machine.grofera.product.apple]
+            cycle_time_s = 5
+            breakdown_threshold_s = 8
+
+        [simulator.machine.grofera.product.kiwi]
+            cycle_time_s = 3
+            breakdown_threshold_s = 7
+
+        [simulator.machine.grofera.product.orange]
+            cycle_time_s = 8
+            breakdown_threshold_s = 12
+
+        # .. add more products here
+
+
+    [simulator.machine.nerola]
+        breakdown_pct = 0.5
+        production_count_init = 5
+        production_start_with = "verde"
+
+        # occupy modbus registers
+        modbus.hr.lsw = 2
+        modbus.hr.msw = 3
+
+        [simulator.machine.nerola.product.bianca]
+            cycle_time_s = 9
+            breakdown_threshold_s = 13
+
+        [simulator.machine.nerola.product.giallo]
+            cycle_time_s = 23
+            breakdown_threshold_s = 25
+
+        [simulator.machine.nerola.product.nero]
+            cycle_time_s = 3
+            breakdown_threshold_s = 9
+
+        [simulator.machine.nerola.product.rosa]
+            cycle_time_s = 3
+            breakdown_threshold_s = 9
+
+        [simulator.machine.nerola.product.verde]
+            cycle_time_s = 3
+            breakdown_threshold_s = 9
+
+        # .. add more products here
+
+    # .. add more machines here
