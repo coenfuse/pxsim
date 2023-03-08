@@ -17,6 +17,7 @@ from source.apps.pluxsim import globals
 # internal imports
 from source.apps import pluxsim as APP
 from source.apps.pluxsim.config import Configurator
+from source.apps.pluxsim.modbus.agent import Modbus_Agent
 from source.apps.pluxsim.server import HTTP_Server
 from source.apps.pluxsim.simulator.simulator import Simulator_T
 
@@ -59,16 +60,16 @@ class Pluxsim:
         status = ERC.SUCCESS
 
         if status is ERC.SUCCESS:
-            status = self.__setup_cmdline()
-
-        if status is ERC.SUCCESS:
-            status = self.__setup_logging()
-
-        if status is ERC.SUCCESS:
-            logger.info(f"{self.__NAME} : starting {APP.NAME} v{APP.VERS}")
+            status = self.__process_cmdline()
 
         if status is ERC.SUCCESS:
             status = self.__config.parse(self.__cfgfile)
+
+        if status is ERC.SUCCESS:
+            status = self.__setup_logging(self.__config.get_app_config())
+
+        if status is ERC.SUCCESS:
+            logger.info(f"{self.__NAME} : starting {APP.NAME} v{APP.VERS}")
 
         if status is ERC.SUCCESS:
             status = self.__core.configure(self.__config)
@@ -109,19 +110,15 @@ class Pluxsim:
 
     # docs
     # --------------------------------------------------------------------------
-    def __setup_cmdline(self) -> ERC:
+    def __process_cmdline(self) -> ERC:
         
         status = ERC.SUCCESS
         parser = argparse.ArgumentParser()
 
         parser.add_argument("--config", type = str,
             help = 'path to json file with application configurations')
-        parser.add_argument("--logdir", type = str,
-            help = "path to directory where pluxsim will store runtime logs")
         parser.add_argument("--stdout", action = 'store_true',
             help = "whether to display logs on standard output")
-        parser.add_argument("--loglvl", type = int, default = 2,
-            help = "set the log level for stdout ( 0: TRACE, 1: DEBUG, 2: INFO, 3: WARN, 4: ERROR, and 5: CRITICAL )")
 
         # argv[0] is the name of program and thus len(argv) is always 1
         # So, when argv[0] < 2, it means the passed cmdline input is incomplete
@@ -131,40 +128,40 @@ class Pluxsim:
 
         if status is ERC.SUCCESS:
             self.__cfgfile = parser.parse_args().config
-            self.__logdir  = parser.parse_args().logdir
             self.__stdout  = parser.parse_args().stdout
-            self.__loglvl  = parser.parse_args().loglvl
 
         return status
 
 
     # docs
     # --------------------------------------------------------------------------
-    def __setup_logging(self) -> ERC:
+    def __setup_logging(self, config: dict) -> ERC:
         
         status = ERC.SUCCESS
+        
+        log_handles = [logging.StreamHandler(sys.stdout)]
+        log_format  = '%(asctime)s.%(msecs)03d [%(levelname).1s] : %(message)s'
+        log_datefmt = '%Y-%m-%d %H:%M:%S'
 
-        if not os.path.exists(self.__logdir):
-            try: os.mkdir(self.__logdir)
-            except Exception as e:
-                logger.critical(f"log directory create FAILURE at: {self.__logdir} with error: {e}")
-                status = ERC.EXCEPTION
+        if config["log"]["to_file"] == True:
+            log_path = config["log"]["directory"]
 
-        if status is ERC.SUCCESS:
-            log_handles = [ logging.FileHandler(f'{self.__logdir}/{APP.NAME.lower()}.log') ]
-            log_format  = '%(asctime)s.%(msecs)03d [%(levelname).1s] : %(message)s'
-            log_datefmt = '%Y-%m-%d %H:%M:%S'
+            if not os.path.exists(log_path):
+                try: os.makedirs(log_path)
+                except Exception as e:
+                    print(f"log directory create FAILRE at: {self.__logdir} with error: {e}")
+                    status = ERC.EXCEPTION
 
-            if self.__stdout:
-                log_handles.append(logging.StreamHandler(sys.stdout))
+            log_handles.append(logging.FileHandler(f'{log_path}/{APP.NAME.lower()}.log'))
 
+        if status == ERC.SUCCESS:
+            logging.addLevelName(level = 5, levelName = "TRACE")
             logging.basicConfig(
                 format   = log_format,
                 datefmt  = log_datefmt,
-                handlers = log_handles
-            )
-
-            match self.__loglvl:
+                handlers = log_handles)
+            
+            match config["log"]["level"]:
                 case 0: logging.getLogger().setLevel(5)    # TRACE
                 case 1: logging.getLogger().setLevel(logging.DEBUG)
                 case 2: logging.getLogger().setLevel(logging.INFO)
@@ -186,7 +183,8 @@ class Pluxsim:
             self.__NAME = 'PXSCORE '
             self.__simulator = Simulator_T()
             self.__web_server = HTTP_Server()
-            self.__rpc_server = None
+            self.__modbus_server = Modbus_Agent()
+            self.__grpc_server = None
 
 
         # docs
@@ -196,6 +194,19 @@ class Pluxsim:
             status = ERC.SUCCESS
             logger.debug(f"{self.__NAME} : configuring")
 
+            if status == ERC.SUCCESS:
+                status = self.__simulator.configure(config.get_simulator_config())
+
+            if status == ERC.SUCCESS:
+                status = self.__web_server.configure(
+                    simulator = self.__simulator,
+                    host = config.get_webserver_config()["host"]["ip"],
+                    port = config.get_webserver_config()["host"]["port"])
+
+            #if status == ERC.SUCCESS:
+            #    status = self.__modbus_server.configure(config.get_modbus_config())
+
+            '''
             if status is ERC.SUCCESS:
                 for machine in config.get_simulator_machines():
                     status = self.__simulator.add_machine(
@@ -211,6 +222,9 @@ class Pluxsim:
                     simulator = self.__simulator,
                     host = config.get_host_ip(),
                     port = config.get_host_port())
+            '''                
+            
+            # ..
 
             if status is ERC.SUCCESS:
                 logger.info(f"{self.__NAME} : configuration SUCCESS")
@@ -227,13 +241,16 @@ class Pluxsim:
             status = ERC.SUCCESS
             logger.debug(f"{self.__NAME} : starting")
 
-            if status is ERC.SUCCESS:
+            if status == ERC.SUCCESS:
                 status = self.__simulator.start()
 
-            if status is ERC.SUCCESS:
+            if status == ERC.SUCCESS:
                 status = self.__web_server.start()
 
-            # TODO : gRPC server
+            # if status == ERC.SUCCESS:
+            #     status = self.__modbus_server.start()
+
+            # ..
 
             if status is ERC.SUCCESS:
                 logger.info(f'{self.__NAME} : start SUCCESS')
@@ -255,6 +272,9 @@ class Pluxsim:
 
             if status is ERC.SUCCESS:
                 status = self.__simulator.stop()
+
+            if status == ERC.SUCCESS:
+                status = self.__modbus_server.stop()
 
             # ..
 

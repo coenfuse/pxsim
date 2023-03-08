@@ -9,6 +9,7 @@
 import enum
 import json
 import os
+import tomllib
 
 # sibling imports
 # ..
@@ -53,17 +54,16 @@ class Configurator:
             status = self.__ERC.FAILURE
 
         if status == self.__ERC.SUCCESS:
-            if not file_path.lower().endswith(('json', 'json5', 'jsonc')):
-                status = self.__ERC.INVALID_FILE_TYPE
-
-        if status == self.__ERC.SUCCESS:
             try:
-                if file_path.lower().endswith('json'):
-                    self.__config_object = json.load(open(file_path))
-                elif file_path.lower().endswith('json5') or file_path.lower().endswith('jsonc'):
+                if file_path.lower().endswith(('json', 'json5', 'jsonc')):
                     self.__config_object = json5.load(open(file_path))
-            
+                elif file_path.lower().endswith('toml'): 
+                    self.__config_object = tomllib.load(open(file_path, mode = "rb"))
+                else:
+                    status == self.__ERC.INVALID_FILE_TYPE
+
             except Exception as e:
+                print(e)
                 status = self.__ERC.PARSING_EXCEPTION
 
         return status.value

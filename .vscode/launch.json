@@ -7,10 +7,8 @@
             "module": "source",
             "justMyCode": true,
             "args": [
-               "--config", "${workspaceFolder}/config/pluxsim.config.jsonc",
-               "--logdir", "${workspaceFolder}/out/logs/",
-               "--stdout",
-               "--loglvl", "0"
+               "--config", "${workspaceFolder}/config/pxsim.local.toml",
+               "--stdout"
             ]
         }
     ]

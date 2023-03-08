@@ -167,6 +167,13 @@ class Simulator:
 
 
 
+class Configurator:
+    def __init__(self, config_data: dict):
+        self.__data = config_data
+
+    def get_machines_list(self) -> dict:
+        return self.__data["machine"] 
+
 
 class Simulator_T:
 
@@ -174,9 +181,28 @@ class Simulator_T:
     # --------------------------------------------------------------------------
     def __init__(self):
         self.__CNAME = "PXSIM   "
+        self.__config: Configurator = None
         self.__machines : Dict[str, Machine_T] = {}
 
-    
+
+    # docs
+    # --------------------------------------------------------------------------
+    def configure(self, config: dict):
+        status = ERC.SUCCESS
+        self.__config = Configurator(config)
+
+        # not using loop comprehension with all() for sake of readability
+        for machine_name, machine_config in self.__config.get_machines_list().items():
+            status = self.add_machine(
+                name = machine_name,
+                breakdown_pct = machine_config["breakdown_pct"],
+                products = machine_config["product"])
+            
+            if status != ERC.SUCCESS:
+                break
+
+        return status
+
     # docs
     # --------------------------------------------------------------------------
     def add_machine(self, name: str, breakdown_pct: float, products: dict = {}) -> ERC:
@@ -192,11 +218,11 @@ class Simulator_T:
 
         if status is ERC.SUCCESS:
             try:
-                for product in products:
+                for product, config in products.items():
                     status = self.__machines.get(name).add_product(
-                        product["name"],
-                        product["cycle_time_s"],
-                        product["breakdown_threshold_s"])
+                        product,
+                        config["cycle_time_s"],
+                        config["breakdown_threshold_s"])
 
                     if status is not ERC.SUCCESS:
                         raise RuntimeError(f"exception while adding product for {product['name']} with code {status.value} [{status.name}]")
