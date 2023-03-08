@@ -203,26 +203,11 @@ class Pluxsim:
                     host = config.get_webserver_config()["host"]["ip"],
                     port = config.get_webserver_config()["host"]["port"])
 
-            #if status == ERC.SUCCESS:
-            #    status = self.__modbus_server.configure(config.get_modbus_config())
-
-            '''
-            if status is ERC.SUCCESS:
-                for machine in config.get_simulator_machines():
-                    status = self.__simulator.add_machine(
-                        name = machine['name'],
-                        breakdown_pct = machine['breakdown_pct'],
-                        products = machine['products'])
-
-                    if status is not ERC.SUCCESS:
-                        break
-
-            if status is ERC.SUCCESS:
-                status = self.__web_server.configure(
+            if status == ERC.SUCCESS:
+                status = self.__modbus_server.configure(
+                    config = config.get_modbus_config(),
                     simulator = self.__simulator,
-                    host = config.get_host_ip(),
-                    port = config.get_host_port())
-            '''                
+                    simulator_config = config.get_simulator_config())                
             
             # ..
 
@@ -247,8 +232,8 @@ class Pluxsim:
             if status == ERC.SUCCESS:
                 status = self.__web_server.start()
 
-            # if status == ERC.SUCCESS:
-            #     status = self.__modbus_server.start()
+            #if status == ERC.SUCCESS:
+            #    status = self.__modbus_server.start()
 
             # ..
 
@@ -273,8 +258,8 @@ class Pluxsim:
             if status is ERC.SUCCESS:
                 status = self.__simulator.stop()
 
-            if status == ERC.SUCCESS:
-                status = self.__modbus_server.stop()
+            #if status == ERC.SUCCESS:
+            #    status = self.__modbus_server.stop()
 
             # ..
 

@@ -29,6 +29,33 @@ from pymodbus.datastore import ModbusSequentialDataBlock
 from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
 
 
+
+# ------------------------------------------------------------------------------
+# docs
+# ------------------------------------------------------------------------------
+class Configurator:
+    def __init__(self, conf_data: dict):
+        self.__data = conf_data
+
+    def get_host(self) -> tuple:
+        return (self.__data["host"]["ip"], self.__data["host"]["port"])
+    
+    def get_co(self) -> dict:
+        return self.__data["register"]["co"]
+    
+    def get_di(self) -> dict:
+        return self.__data["register"]["di"]
+    
+    def get_hr(self) -> dict:
+        return self.__data["register"]["hr"]
+    
+    def get_ir(self) -> dict:
+        return self.__data["register"]["ir"]
+    
+    def get_id(self):
+        return self.__data["id"]
+    
+
 # ==============================================================================
 # TODO : docs
 # ==============================================================================
@@ -40,11 +67,11 @@ class Modbus_Agent:
         self.__NAME = "MODBUS  "
         self.__is_requested_stop = True
         
-        self.__simulator_obj = None
+        self.__config = None
+        self.__simulator_ref = None
         self.__machines_conf = None
         self.__server = None
 
-        self.__register_conf = 0
         self.__slave_registers = None
         self.__server_runtime: Process = None
         self.__data_sync_service: Thread = None
@@ -52,11 +79,11 @@ class Modbus_Agent:
 
     # docs
     # --------------------------------------------------------------------------
-    def configure(self, simulator, machines_conf, host, port, reg_conf) -> ERC:
+    def configure(self, config, simulator, simulator_config) -> ERC:
 
-        self.__simulator_obj = simulator
-        self.__machines_conf = machines_conf
-        self.__register_config = reg_conf
+        self.__simulator_ref = simulator
+        self.__machines_conf = simulator_config
+        self.__config = Configurator(config)
 
         # Using ModbusSlaveContext class to manage the data blocks that are used
         # to store the values of all the registers
@@ -79,22 +106,26 @@ class Modbus_Agent:
             # ModbusSequentialDataBlock(start_address, [init_val] * registers_count)
             # 
             # Direct Input register available by function code 1                        
-            # di = ModbusSequentialDataBlock(reg_conf['di']['start'], [0] * reg_conf['di']['size']),
-            di = ModbusSequentialDataBlock(0, [0] * 5),
+            di = ModbusSequentialDataBlock(
+                address = self.__config.get_di()["addr"],
+                values  = [0] * self.__config.get_di()["size"]),
             
             # Coil register, available by function code 2
-            # co = ModbusSequentialDataBlock(reg_conf['co']['start'], [0] * reg_conf['co']['size']),
-            co = ModbusSequentialDataBlock(0, [0] * 5),
+            co = ModbusSequentialDataBlock(
+                address = self.__config.get_co()["addr"],
+                values  = [0] * self.__config.get_co()["size"]),
 
             
             # Holding Register, available by function code 3
-            # hr = ModbusSequentialDataBlock(reg_conf['hr']['start'], [0] * reg_conf['hr']['size']),
-            hr = ModbusSequentialDataBlock(0, [0] * 5),
+            hr = ModbusSequentialDataBlock(
+                address = self.__config.get_hr()["addr"], 
+                values  = [0] * self.__config.get_hr()["size"]),
 
             
             # Input Register, available by function code 4
-            # ir = ModbusSequentialDataBlock(reg_conf['ir']['start'], [0] * reg_conf['ir']['size'])
-            ir = ModbusSequentialDataBlock(0, [0] * 5)
+            ir = ModbusSequentialDataBlock(
+                address = self.__config.get_ir()["addr"], 
+                values  = [0] * self.__config.get_ir()["size"])
         )
 
         # Using ModbusServerContext class to manage the context of all connected
@@ -105,16 +136,16 @@ class Modbus_Agent:
 
         # Set device identification, intialization will be improved later
         identity = ModbusDeviceIdentification()
-        identity.VendorName  = 'Power Profit'
-        identity.ProductCode = "px_sim"
-        identity.VendorUrl   = "",
-        identity.ProductName = "PluxSim"
-        identity.ModelName   = "PluxSim Modbus Slave"
-        identity.MajorMinorRevision = "0.1.0"
+        identity.ProductName = self.__config.get_id()["product"]["name"]
+        identity.ProductCode = self.__config.get_id()["product"]["code"]
+        identity.ModelName   = self.__config.get_id()["product"]["model"]
+        identity.MajorMinorRevision = self.__config.get_id()["product"]["version"]
+        identity.VendorName  = self.__config.get_id()["vendor"]["name"]
+        identity.VendorUrl   = self.__config.get_id()["vendor"]["url"]
 
-        self.__server = ModbusTcpServer(context, ModbusSocketFramer, identity, (host, port))
-        self.__server_runtime = Process(target = asyncio.run, args = (self.__server_run()))
+        self.__server = ModbusTcpServer(context, ModbusSocketFramer, identity, self.__config.get_host())
         self.__data_sync_service = Thread(target = self.__data_syncronizer)
+        # self.__server_runtime = Process(target = asyncio.run, args = self.__server_run())
         
         return ERC.SUCCESS
 
@@ -131,7 +162,7 @@ class Modbus_Agent:
     # --------------------------------------------------------------------------
     def start(self) -> ERC:
         self.__is_requested_stop = False
-        self.__server_runtime.start()
+        asyncio.run(self.__server_run())
         self.__data_sync_service.start()
         return ERC.SUCCESS
 
@@ -141,9 +172,8 @@ class Modbus_Agent:
     def stop(self) -> ERC:
         self.__is_requested_stop = True
         self.__data_sync_service.join()
-        self.__server.server_close()
-        self.__server.shutdown()
-        self.__server_runtime.join()
+        asyncio.run(self.__server_stop())
+        return ERC.SUCCESS
 
 
     # wrapper for asyncio compatible server runtimes.
@@ -153,6 +183,11 @@ class Modbus_Agent:
     # --------------------------------------------------------------------------
     async def __server_run(self):
         await self.__server.serve_forever()
+
+    # wrapper ...
+    # --------------------------------------------------------------------------
+    async def __server_stop(self):
+        await asyncio.gather(self.__server.server_close(), self.__server.shutdown())
 
 
     # docs
@@ -192,7 +227,7 @@ class Modbus_Agent_T:
         self.__registers_count = 0
         self.__register_block: list = None
 
-        self.__data_sync_service = threading.Thread(target = self.__data_sync_job)
+        self.__data_sync_service = Thread(target = self.__data_sync_job)
         self.__is_requested_stop = True
 
     # docs
@@ -213,7 +248,7 @@ class Modbus_Agent_T:
             identity = identiy,
             address = f"{host}:{port}")
 
-        self.__server_runtime = threading.Thread(target = self.__server.serve_forever)
+        self.__server_runtime = Thread(target = self.__server.serve_forever)
 
         return ERC.SUCCESS
 

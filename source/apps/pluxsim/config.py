@@ -61,22 +61,22 @@ class Configurator(__BaseConfigurator):
 
     # docs
     # --------------------------------------------------------------------------
-    def get_app_config(self) -> int:
+    def get_app_config(self) -> dict:
         return super()._get_value("pxsim")
     
     # docs
     # --------------------------------------------------------------------------
-    def get_webserver_config(self) -> int:
+    def get_webserver_config(self) -> dict:
         return super()._get_value("http")
 
     # docs
     # --------------------------------------------------------------------------
-    def get_modbus_config(self) -> int:
+    def get_modbus_config(self) -> dict:
         return super()._get_value("modbus")
     
     # docs
     # --------------------------------------------------------------------------
-    def get_simulator_config(self) -> int:
+    def get_simulator_config(self) -> dict:
         return super()._get_value("simulator")
     
     # ..
