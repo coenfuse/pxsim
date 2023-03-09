@@ -5,9 +5,11 @@
 
 # standard imports
 import argparse
+import asyncio
 import json
 import logging
 import os
+import threading
 import time
 import sys
 
@@ -17,7 +19,7 @@ from source.apps.pluxsim import globals
 # internal imports
 from source.apps import pluxsim as APP
 from source.apps.pluxsim.config import Configurator
-from source.apps.pluxsim.modbus.agent import Modbus_Agent
+from source.apps.pluxsim.modbus.agent import Modbus_Service
 from source.apps.pluxsim.server import HTTP_Server
 from source.apps.pluxsim.simulator.simulator import Simulator_T
 
@@ -181,9 +183,11 @@ class Pluxsim:
         # ----------------------------------------------------------------------
         def __init__(self) -> None:
             self.__NAME = 'PXSCORE '
-            self.__simulator = Simulator_T()
-            self.__web_server = HTTP_Server()
-            self.__modbus_server = Modbus_Agent()
+            # self.__async_runtime = threading.Thread(target = self.__async_routines)
+
+            self.__simulator: Simulator_T = Simulator_T()
+            self.__web_server: HTTP_Server = HTTP_Server()
+            self.__modbus_server: Modbus_Service = Modbus_Service()
             self.__grpc_server = None
 
 
@@ -203,6 +207,10 @@ class Pluxsim:
                     host = config.get_webserver_config()["host"]["ip"],
                     port = config.get_webserver_config()["host"]["port"])
 
+                '''
+                status = self.__modbus_server.configure()
+                '''
+                
             if status == ERC.SUCCESS:
                 status = self.__modbus_server.configure(
                     config = config.get_modbus_config(),
@@ -235,6 +243,13 @@ class Pluxsim:
             if status == ERC.SUCCESS:
                 status = self.__modbus_server.start()
 
+            '''
+            if status == ERC.SUCCESS:
+                self.__async_runtime.start()
+                time.sleep(2)
+                status = ERC.SUCCESS if self.__async_runtime.is_alive() else ERC.FAILURE
+            '''
+            
             # ..
 
             if status is ERC.SUCCESS:
@@ -252,18 +267,25 @@ class Pluxsim:
             status = ERC.SUCCESS
             logger.debug(f"{self.__NAME} : stopping")
 
-            if status is ERC.SUCCESS:
+            if status == ERC.SUCCESS:
                 status = self.__web_server.stop()
 
-            if status is ERC.SUCCESS:
+            if status == ERC.SUCCESS:
                 status = self.__simulator.stop()
 
             if status == ERC.SUCCESS:
                 status = self.__modbus_server.stop()
 
+            '''
+            try:
+                self.__async_runtime.join(timeout = 10)
+            except TimeoutError:
+                logger.warn(f"{self.__NAME} : TimeoutError, one or more async routines didn't stop gracefully")
+            '''
+            
             # ..
 
-            if status is ERC.SUCCESS:
+            if status == ERC.SUCCESS:
                 logger.info(f'{self.__NAME} : stop SUCCESS')
             else:
                 logger.error(f"{self.__NAME} : stop FAILURE")                   # this is not critical since core is closing anyway
@@ -274,4 +296,16 @@ class Pluxsim:
         # docs
         # ----------------------------------------------------------------------
         def is_running(self) -> bool:
-            return self.__web_server.is_running() or self.__simulator.is_running() 
+            return self.__web_server.is_running() or self.__simulator.is_running() or self.__modbus_server.is_running()
+        
+
+        # This method gathers and starts all the async coroutines that are
+        # invoked by the internal service components. This singular asyncio.run()
+        # ensures there is only one asyncio.run called for this instance of the
+        # application. This class method is then assigned to a thread which will
+        # then be solely dedicated to serving async event loops. 
+        # Function call asyncio.run() is blocking
+        # ----------------------------------------------------------------------
+        def __async_routines(self):
+            # asyncio.gather()
+            asyncio.run(self.__modbus_server.start())
