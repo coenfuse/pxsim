@@ -5,7 +5,7 @@
             "type": "python",
             "request": "launch",
             "module": "source",
-            "justMyCode": true,
+            "justMyCode": false,
             "args": [
                "--config", "${workspaceFolder}/config/pxsim.local.toml",
                "--stdout"
