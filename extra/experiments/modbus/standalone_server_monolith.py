@@ -95,6 +95,7 @@ class Modbus_Agent:
         self.__is_requested_stop = False
         self.__data_sync_worker.start()    
         await server.serve_forever()       # blocking call
+        print("Does this print inside agent?")
 
 
     # The following function reads simulated data from the simulator over HTTP 
@@ -191,6 +192,7 @@ def main():
 class Monolith:
     def __init__(self):
         self.__service: Modbus_Agent = None
+        self.__service_thread = threading.Thread(target = self._async_routines)
 
     def configure(self):
         hosting_address = ("0.0.0.0", 55124)
@@ -214,10 +216,14 @@ class Monolith:
         self.__service = Modbus_Agent(hosting_address, register_config, identity_config, simulator_address, simulator_config)
 
     def start(self):
-        asyncio.run(self.__service.start())
+        self.__service_thread.start()
+        print("Does this print inside monolith?")
 
     def stop(self):
         self.__service.stop()
+
+    def _async_routines(self):
+        asyncio.run(self.__service.start())         # blocking
 
 
 
@@ -235,6 +241,7 @@ if __name__ == "__main__":
 
     try:
         core.start()
+        print("Does this print inside main?")
     except KeyboardInterrupt:
         print("Received keyboard interrupt")
         core.stop()

@@ -32,9 +32,9 @@ VERS = ''
 # pkg var metadata
 # ------------------------------------------------------------------------------
 __VER_MAJOR = 0
-__VER_MINOR = 2
-__VER_PATCH = 2
-__VER_BUILD = 5
+__VER_MINOR = 3
+__VER_PATCH = 0
+__VER_BUILD = 48
 
 __IS_PRE_RELEASE = False
 __PRE_RELEASE_BUILD = 1
