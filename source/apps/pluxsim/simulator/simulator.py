@@ -196,6 +196,7 @@ class Simulator_T:
             status = self.add_machine(
                 name = machine_name,
                 breakdown_pct = machine_config["breakdown_pct"],
+                production_count_init = machine_config["production_count_init"],
                 products = machine_config["product"])
             
             if status != ERC.SUCCESS:
@@ -205,7 +206,7 @@ class Simulator_T:
 
     # docs
     # --------------------------------------------------------------------------
-    def add_machine(self, name: str, breakdown_pct: float, products: dict = {}) -> ERC:
+    def add_machine(self, name: str, breakdown_pct: float, production_count_init: int, products: dict = {}) -> ERC:
         
         status = ERC.MACHINE_ALREADY_EXISTS if name in self.__machines else ERC.SUCCESS
 
@@ -213,7 +214,7 @@ class Simulator_T:
             status = ERC.PRODUCTION_NOT_FOUND if len(products) <= 0 else ERC.SUCCESS
 
         if status is ERC.SUCCESS:
-            self.__machines[name] = Machine_T(name, breakdown_pct)
+            self.__machines[name] = Machine_T(name, breakdown_pct, production_count_init)
             status = ERC.SUCCESS if name in self.__machines else ERC.MEMORY_ALLOC_FAILURE
 
         if status is ERC.SUCCESS:
