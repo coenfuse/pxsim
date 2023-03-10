@@ -1,6 +1,7 @@
 # standard imports
 import argparse
 import asyncio
+import copy
 import json
 import logging
 import multiprocessing
@@ -9,6 +10,7 @@ import time
 
 # component imports
 from source.components.io import logger
+from source.apps.pluxsim.simulator.simulator import Simulator_T
 
 # shared imports
 from source.shared.errorcodes.status import ERC
@@ -176,10 +178,10 @@ class Modbus_Service:
 
     # docs
     # --------------------------------------------------------------------------
-    def configure(self, config, simulator, simulator_config) -> ERC:
+    def configure(self, config, simulator: Simulator_T, simulator_config: dict) -> ERC:
 
         self.__simulator_ref = simulator
-        self.__machines_config = simulator_config
+        self.__machines_config = simulator_config["machine"]
         self.__config = Configurator(config)
 
         self.__agent = Modbus_Async_Client(self.__config)
@@ -226,8 +228,41 @@ class Modbus_Service:
     def _async_routines(self):
         asyncio.run(self.__agent.start())         # blocking
 
-    # docs
+    # The following code is beyond stupid. It contains little bit of hacks and
+    # patchworks. Will be improved in upcoming stable builds.
     # --------------------------------------------------------------------------
     def __data_updater(self) -> None:
+
+        # machine -> modbus.hr map
+        map_info = {
+            "machine" : "",
+            "reg_type": "hr",
+            "lsw_at"  : 0,
+            "msw_at"  : 0,
+        }
+        mappings = []
+
+        # parse machine config to decode mappings
+        for machine in self.__machines_config:
+            map = copy.deepcopy(map_info)
+            map["machine"] = machine
+            map["lsw_at"]  = self.__machines_config[machine]["modbus"]["hr"]["lsw"]
+            map["msw_at"]  = self.__machines_config[machine]["modbus"]["hr"]["msw"]
+            mappings.append(map)
+        
+        # create generic registers to store values
+        co_reg = [0] * self.__config.get_co()["size"]
+        di_reg = [0] * self.__config.get_di()["size"]
+        hr_reg = [0] * self.__config.get_hr()["size"]
+        ir_reg = [0] * self.__config.get_ir()["size"]
+        
+        # get into a loop that refers to simulator and updates data every second
         while not self.__is_requested_stop:
-            time.sleep(3)
+            
+            for map in mappings:
+                production = self.__simulator_ref.get_status(in_machine = map["machine"])["total_production"]
+                hr_reg[map["msw_at"]] = divmod(production, 0x10000)[0]
+                hr_reg[map["lsw_at"]] = divmod(production, 0x10000)[1]
+                self.__agent.update_register(0x3, 0x0, hr_reg)
+
+            time.sleep(1)
