@@ -33,6 +33,8 @@
     # set default host port for HTTP connection via internal http webserver
     host.port = 11204
 
+    # TODO : Add weblogs
+
 
 # Modbus slave properties
 [modbus]
@@ -68,7 +70,7 @@
     id.product.name = "PluxSim"
     id.product.code = "pxsim"
     id.product.model = "Pluxsim Modbus Slave"
-    id.product.version = "0.1.0"
+    id.product.version = "0.3.0"
     id.vendor.name = "Power Profit"
     id.vendor.url = ""
 
@@ -81,9 +83,10 @@
     [simulator.machine.grofera]
         breakdown_pct = 20
         production_count_init = 0
-        production_start_with = "apple"
+        production_start_with = "apple"     # [NOT USED]
 
-        # occupy modbus registers 
+        # occupy modbus registers
+        # Currently only Holding Registers (hr) can be mapped
         modbus.hr.lsw = 0       # Holding register at index 0 will host Least Significant Word
         modbus.hr.msw = 1       # Holding register at index 1 will host Most Significant Word 
 
@@ -108,6 +111,7 @@
         production_start_with = "verde"
 
         # occupy modbus registers
+        # Currently only Holding Registers (hr) can be mapped
         modbus.hr.lsw = 2
         modbus.hr.msw = 3
 
