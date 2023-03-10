@@ -167,6 +167,13 @@ class Simulator:
 
 
 
+class Configurator:
+    def __init__(self, config_data: dict):
+        self.__data = config_data
+
+    def get_machines_list(self) -> dict:
+        return self.__data["machine"] 
+
 
 class Simulator_T:
 
@@ -174,12 +181,32 @@ class Simulator_T:
     # --------------------------------------------------------------------------
     def __init__(self):
         self.__CNAME = "PXSIM   "
+        self.__config: Configurator = None
         self.__machines : Dict[str, Machine_T] = {}
 
-    
+
     # docs
     # --------------------------------------------------------------------------
-    def add_machine(self, name: str, breakdown_pct: float, products: dict = {}) -> ERC:
+    def configure(self, config: dict):
+        status = ERC.SUCCESS
+        self.__config = Configurator(config)
+
+        # not using loop comprehension with all() for sake of readability
+        for machine_name, machine_config in self.__config.get_machines_list().items():
+            status = self.add_machine(
+                name = machine_name,
+                breakdown_pct = machine_config["breakdown_pct"],
+                production_count_init = machine_config["production_count_init"],
+                products = machine_config["product"])
+            
+            if status != ERC.SUCCESS:
+                break
+
+        return status
+
+    # docs
+    # --------------------------------------------------------------------------
+    def add_machine(self, name: str, breakdown_pct: float, production_count_init: int, products: dict = {}) -> ERC:
         
         status = ERC.MACHINE_ALREADY_EXISTS if name in self.__machines else ERC.SUCCESS
 
@@ -187,16 +214,16 @@ class Simulator_T:
             status = ERC.PRODUCTION_NOT_FOUND if len(products) <= 0 else ERC.SUCCESS
 
         if status is ERC.SUCCESS:
-            self.__machines[name] = Machine_T(name, breakdown_pct)
+            self.__machines[name] = Machine_T(name, breakdown_pct, production_count_init)
             status = ERC.SUCCESS if name in self.__machines else ERC.MEMORY_ALLOC_FAILURE
 
         if status is ERC.SUCCESS:
             try:
-                for product in products:
+                for product, config in products.items():
                     status = self.__machines.get(name).add_product(
-                        product["name"],
-                        product["cycle_time_s"],
-                        product["breakdown_threshold_s"])
+                        product,
+                        config["cycle_time_s"],
+                        config["breakdown_threshold_s"])
 
                     if status is not ERC.SUCCESS:
                         raise RuntimeError(f"exception while adding product for {product['name']} with code {status.value} [{status.name}]")

@@ -1,267 +1,283 @@
-# description of this module in 50 words
-# ..
-
-
 # standard imports
+import argparse
 import asyncio
-from multiprocessing import Process
-from threading import Thread
+import copy
+import json
+import logging
+import multiprocessing
+import platform
+import threading
 import time
 
-# local imports
+# component imports
+from source.components.io import logger
 from source.apps.pluxsim.simulator.simulator import Simulator_T
 
 # shared imports
 from source.shared.errorcodes.status import ERC
 
-# thirdparty imports
-from pymodbus.datastore import ModbusSequentialDataBlock
-from pymodbus.datastore import ModbusServerContext
-from pymodbus.datastore import ModbusSlaveContext
-from pymodbus.server import ModbusTcpServer
-# from pymodbus.server import StartTcpServer, ServerStop
-from pymodbus.framer import rtu_framer
+# third party imports
 
-from pymodbus.server.async_io import ModbusTcpServer
-from pymodbus.framer.socket_framer import ModbusSocketFramer
-from pymodbus.device import ModbusDeviceIdentification
+from pymodbus.server.async_io import ModbusTcpServer, ModbusSocketFramer
 from pymodbus.datastore import ModbusSequentialDataBlock
 from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
+from pymodbus.device import ModbusDeviceIdentification
+
+
+
+
+# ------------------------------------------------------------------------------
+# docs
+# ------------------------------------------------------------------------------
+class Configurator:
+    def __init__(self, conf_data: dict):
+        self.__data = conf_data
+        # TODO : Add data validation call here, throw exception (since we are
+        # inside constructor) and handle it afterwards :)
+
+    def get_host(self) -> tuple:
+        return (self.__data["host"]["ip"], self.__data["host"]["port"])
+    
+    def get_co(self) -> dict:
+        return self.__data["register"]["co"]
+    
+    def get_di(self) -> dict:
+        return self.__data["register"]["di"]
+    
+    def get_hr(self) -> dict:
+        return self.__data["register"]["hr"]
+    
+    def get_ir(self) -> dict:
+        return self.__data["register"]["ir"]
+    
+    def get_id(self):
+        return self.__data["id"]
+    
 
 
 # ==============================================================================
-# TODO : docs
+# The following class is a simple definition for the Modbus Server Agent that
+# will run on the main thread. It has a separate data syncing facility over HTTP
 # ==============================================================================
-class Modbus_Agent:
+class Modbus_Async_Client:
     
     # docs
     # --------------------------------------------------------------------------
-    def __init__(self):
-        self.__NAME = "MODBUS  "
-        self.__is_requested_stop = True
+    def __init__(self, config: Configurator):
         
-        self.__simulator_obj = None
-        self.__machines_conf = None
-        self.__server = None
-
-        self.__register_conf = 0
-        self.__slave_registers = None
-        self.__server_runtime: Process = None
-        self.__data_sync_service: Thread = None
-
-
-    # docs
-    # --------------------------------------------------------------------------
-    def configure(self, simulator, machines_conf, host, port, reg_conf) -> ERC:
-
-        self.__simulator_obj = simulator
-        self.__machines_conf = machines_conf
-        self.__register_config = reg_conf
+        self.__CNAME = "AGENT    : [Modbus] "
+        self.__config: Configurator = config
 
         # Using ModbusSlaveContext class to manage the data blocks that are used
-        # to store the values of all the registers
+        # to store the values of all the registes
         self.__slave_registers = ModbusSlaveContext(
 
             # The first arg in ModbusSequentialDataBlock specifies the starting
             # address of the data block and the second argument list * size,
             # creates a data block with reg_count number of registers starting
-            # at address 0, each with value of 0.
-            # 
+            # at address 0, each with value of 0
+            #
             # A data block is a list of registers where each register can store
-            # 16 bit integer values. And these values are provided in a python
+            # 16 bit integer value. And these values are provided in a python
             # list format. So, the syntax
             # ModbusSequentialDataBlock(0x0, [0,1,2,3,4])
-            # means that a data block with 5 registers having value 0,1,2,3 and 
-            # 4 is created.
-            # 
+            # means that a data block with 5 registers having value 0,1,2,3 and
+            # 4 is created
+            #
             # So I use the following python shorthand for creating a list of
-            # specified length with all values set to 0. The general format is,
+            # specified length with all values set to 0. The general format is
             # ModbusSequentialDataBlock(start_address, [init_val] * registers_count)
-            # 
+            #
             # Direct Input register available by function code 1                        
-            # di = ModbusSequentialDataBlock(reg_conf['di']['start'], [0] * reg_conf['di']['size']),
-            di = ModbusSequentialDataBlock(0, [0] * 5),
+            di = ModbusSequentialDataBlock(
+                address = self.__config.get_di()["addr"],
+                values  = [0] * self.__config.get_di()["size"]),
             
             # Coil register, available by function code 2
-            # co = ModbusSequentialDataBlock(reg_conf['co']['start'], [0] * reg_conf['co']['size']),
-            co = ModbusSequentialDataBlock(0, [0] * 5),
+            co = ModbusSequentialDataBlock(
+                address = self.__config.get_co()["addr"],
+                values  = [0] * self.__config.get_co()["size"]),
 
             
             # Holding Register, available by function code 3
-            # hr = ModbusSequentialDataBlock(reg_conf['hr']['start'], [0] * reg_conf['hr']['size']),
-            hr = ModbusSequentialDataBlock(0, [0] * 5),
+            hr = ModbusSequentialDataBlock(
+                address = self.__config.get_hr()["addr"], 
+                values  = [0] * self.__config.get_hr()["size"]),
 
             
             # Input Register, available by function code 4
-            # ir = ModbusSequentialDataBlock(reg_conf['ir']['start'], [0] * reg_conf['ir']['size'])
-            ir = ModbusSequentialDataBlock(0, [0] * 5)
+            ir = ModbusSequentialDataBlock(
+                address = self.__config.get_ir()["addr"], 
+                values  = [0] * self.__config.get_ir()["size"])
         )
 
         # Using ModbusServerContext class to manage the context of all connected
         # slaves
-        context = ModbusServerContext(
-            slaves = self.__slave_registers,
+        self.__context = ModbusServerContext(
+            slaves = self.__slave_registers, 
             single = True)
-
-        # Set device identification, intialization will be improved later
-        identity = ModbusDeviceIdentification()
-        identity.VendorName  = 'Power Profit'
-        identity.ProductCode = "px_sim"
-        identity.VendorUrl   = "",
-        identity.ProductName = "PluxSim"
-        identity.ModelName   = "PluxSim Modbus Slave"
-        identity.MajorMinorRevision = "0.1.0"
-
-        self.__server = ModbusTcpServer(context, ModbusSocketFramer, identity, (host, port))
-        self.__server_runtime = Process(target = asyncio.run, args = (self.__server_run()))
-        self.__data_sync_service = Thread(target = self.__data_syncronizer)
         
-        return ERC.SUCCESS
+        # Set device identification
+        self.__id = ModbusDeviceIdentification()
+        self.__id.ProductName = self.__config.get_id()["product"]["name"]
+        self.__id.ProductCode = self.__config.get_id()["product"]["code"]
+        self.__id.ModelName   = self.__config.get_id()["product"]["model"]
+        self.__id.VendorName  = self.__config.get_id()["vendor"]["name"]
+        self.__id.VendorUrl   = self.__config.get_id()["vendor"]["url"]
+        self.__id.MajorMinorRevision = self.__config.get_id()["product"]["version"]
 
 
-    # Now any modbus client (master device) that is on the same network and is 
-    # using Modbus protocol can read values from the holding registers. The cli-
-    # ent would need to know the IP address and port of the server, as well as 
-    # the function code (here 3 is for holding registers block) and the starting 
-    # address of the holding registers. With this information, the client can 
-    # send a request to server (slave device) and the slave will respond with 
-    # the values stored in the requested registers block.
-    #
-    # I am not sure how to handle this warning, i'm stupid with asyncio
+    # docs
     # --------------------------------------------------------------------------
-    def start(self) -> ERC:
-        self.__is_requested_stop = False
-        self.__server_runtime.start()
-        self.__data_sync_service.start()
+    async def start(self):
+        self.__server = ModbusTcpServer(
+            context = self.__context,
+            framer  = ModbusSocketFramer,
+            identity= self.__id,
+            address = self.__config.get_host())
+        
+        logger.debug(f"{self.__CNAME} : starting")
+        await self.__server.serve_forever()         # blocking
         return ERC.SUCCESS
 
 
     # docs
     # --------------------------------------------------------------------------
-    def stop(self) -> ERC:
-        self.__is_requested_stop = True
-        self.__data_sync_service.join()
-        self.__server.server_close()
-        self.__server.shutdown()
-        self.__server_runtime.join()
-
-
-    # wrapper for asyncio compatible server runtimes.
-    # the server's serve_forever() is a coroutine function. Thus, it needs to be
-    # awaited for its completion and must be wrapped inside an async function.
-    # That is why this definition is required
-    # --------------------------------------------------------------------------
-    async def __server_run(self):
-        await self.__server.serve_forever()
+    async def stop(self):
+        logger.debug(f"{self.__CNAME} : stopping")
+        await self.__server.shutdown()
+        await self.__server.server_close()
+        return ERC.SUCCESS
 
 
     # docs
     # --------------------------------------------------------------------------
-    def __data_syncronizer(self):
-        while not self.__is_requested_stop:
-            time.sleep(2)
+    def update_register(self, fc, addr, values) -> ERC:
+        self.__slave_registers.setValues(fc, addr, values)
+    
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class Modbus_Agent_T:
+# This class wraps the internal async Modbus Agent class and gives us a clean
+# synchronized and usable interface to work with
+# ------------------------------------------------------------------------------
+class Modbus_Service:
 
     # docs
     # --------------------------------------------------------------------------
     def __init__(self):
-        self.__NAME = "MODBUS  "
-        
-        self.__sim_obj: Simulator_T = None
-        self.__machines_conf: dict  = None
-        
-        self.__server = None
-        self.__server_runtime = None
+        self.__CNAME = "SERVICE  : [Modbus] "
+        self.__agent: Modbus_Async_Client = None
 
-        self.__registers_count = 0
-        self.__register_block: list = None
-
-        self.__data_sync_service = threading.Thread(target = self.__data_sync_job)
+        self.__agent_runtime = None
+        if platform.system() == "Linux":
+            self.__agent_runtime = multiprocessing.Process(target = self._async_routines)
+        elif platform.system() == "Windows":
+            self.__agent_runtime = threading.Thread(target = self._async_routines)
+        else:
+            raise OSError("Cannot detect system type!")
+        
+        self.__data_sync = threading.Thread(target = self.__data_updater)
         self.__is_requested_stop = True
+
+        # HACK : Turns off logging from asyncio library, using selector: EpollSelector
+        import logging
+        logging.getLogger('asyncio').setLevel(logging.WARNING)
+
 
     # docs
     # --------------------------------------------------------------------------
-    def configure(self, simulator, machines_conf, host, port, reg_count) -> ERC:
-        self.__sim_obj = simulator
-        self.__machines_conf = machines_conf
+    def configure(self, config, simulator: Simulator_T, simulator_config: dict) -> ERC:
 
-        self.__registers_count = reg_count
-        self.__register_block   = ModbusSequentialDataBlock(0x00, [0] * reg_count)         # initializes a data block containing reg_count number of register initialzied with value 0
-        slaves  = { 0x00: ModbusSlaveContext(hr = self.__register_block)}
-        context = ModbusServerContext(slaves, single = True)
-        identiy = None
+        self.__simulator_ref = simulator
+        self.__machines_config = simulator_config["machine"]
+        self.__config = Configurator(config)
 
-        self.__server = ModbusTcpServer(
-            context = context, 
-            framer = rtu_framer, 
-            identity = identiy,
-            address = f"{host}:{port}")
-
-        self.__server_runtime = threading.Thread(target = self.__server.serve_forever)
-
+        self.__agent = Modbus_Async_Client(self.__config)
         return ERC.SUCCESS
-
+    
 
     # docs
     # --------------------------------------------------------------------------
     def start(self) -> ERC:
+        logger.debug(f"{self.__CNAME} : starting")
+        
         self.__is_requested_stop = False
-        self.__data_sync_service.start()
-        self.__server_runtime.start()
+        self.__agent_runtime.start()
+        time.sleep(2)
+
+        logger.info(f"{self.__CNAME} : SUCCESS - slave hosted at http://{self.__config.get_host()[0]}:{self.__config.get_host()[1]}")
+        self.__data_sync.start()
+
+        logger.info(f"{self.__CNAME} : start SUCCESS")
         return ERC.SUCCESS
 
 
     # docs
     # --------------------------------------------------------------------------
     def stop(self) -> ERC:
+        logger.debug(f"{self.__CNAME} : stopping")
+        
         self.__is_requested_stop = True
-        self.__server.shutdown()
-        # ServerStop()
-        self.__server_runtime.join(timeout = 5)
-        self.__data_sync_service.join(timeout = 4)
+        self.__data_sync.join()
+        # self.__agent.stop()
+
+        if platform.system() == "Linux":
+            self.__agent_runtime.terminate()
+        elif platform.system() == "Windows":
+            self.__agent_runtime.join(timeout = 5)
+
+        logger.info(f"{self.__CNAME} : SUCCESS - disposed slave hosted at http://{self.__config.get_host()[0]}:{self.__config.get_host()[1]}")
+
+        logger.info(f"{self.__CNAME} : stop SUCCESS")
         return ERC.SUCCESS
 
 
     # docs
     # --------------------------------------------------------------------------
-    def is_running(self) -> bool:
-        return True if self.__server_runtime.is_alive() and self.__data_sync_service.is_alive() and self.__is_requested_stop else False
+    def is_running(self) -> ERC:
+        return self.__data_sync.is_alive()
 
 
-    # The following funciton is going to be improved once I get some time with
-    # better decoupling and desing choices. First idea is to have a reference
-    # of an in-memory database, instead of the simulator itself.
+    # docs
     # --------------------------------------------------------------------------
-    def __data_sync_job(self):
-        while not self.__is_requested_stop:
+    def _async_routines(self):
+        asyncio.run(self.__agent.start())         # blocking
 
-            for machine_config in self.__machines_conf:
-                for product_config in machine_config["products"]:
-                    status = self.__sim_obj.get_status(
-                        for_product = product_config["name"],
-                        in_machine  = machine_config["name"])
-                    
-                    # check whether the mentioned register allocated addresses for
-                    # each product falls in a valid range or not. All the indexes
-                    # must be less than the total registers count
-                    # if all(index < self.__registers_count for index in product_config['modbus_register_allocs']):
-                        # self.__register_block[product_config['modbus_register_allocs'][0]] = status['total_production']
-                        # self.__register_block[product_config['modbus_register_allocs'][1]] = status['last_production_duration_s']
+    # The following code is beyond stupid. It contains little bit of hacks and
+    # patchworks. Will be improved in upcoming stable builds.
+    # --------------------------------------------------------------------------
+    def __data_updater(self) -> None:
+
+        # machine -> modbus.hr map
+        map_info = {
+            "machine" : "",
+            "reg_type": "hr",
+            "lsw_at"  : 0,
+            "msw_at"  : 0,
+        }
+        mappings = []
+
+        # parse machine config to decode mappings
+        for machine in self.__machines_config:
+            map = copy.deepcopy(map_info)
+            map["machine"] = machine
+            map["lsw_at"]  = self.__machines_config[machine]["modbus"]["hr"]["lsw"]
+            map["msw_at"]  = self.__machines_config[machine]["modbus"]["hr"]["msw"]
+            mappings.append(map)
+        
+        # create generic registers to store values
+        co_reg = [0] * self.__config.get_co()["size"]
+        di_reg = [0] * self.__config.get_di()["size"]
+        hr_reg = [0] * self.__config.get_hr()["size"]
+        ir_reg = [0] * self.__config.get_ir()["size"]
+        
+        # get into a loop that refers to simulator and updates data every second
+        while not self.__is_requested_stop:
+            
+            for map in mappings:
+                production = self.__simulator_ref.get_status(in_machine = map["machine"])["total_production"]
+                hr_reg[map["msw_at"]] = divmod(production, 0x10000)[0]
+                hr_reg[map["lsw_at"]] = divmod(production, 0x10000)[1]
+                self.__agent.update_register(0x3, 0x0, hr_reg)
 
             time.sleep(1)
