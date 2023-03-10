@@ -5,6 +5,7 @@ import copy
 import json
 import logging
 import multiprocessing
+import platform
 import threading
 import time
 
@@ -16,7 +17,7 @@ from source.apps.pluxsim.simulator.simulator import Simulator_T
 from source.shared.errorcodes.status import ERC
 
 # third party imports
-import httpx
+
 from pymodbus.server.async_io import ModbusTcpServer, ModbusSocketFramer
 from pymodbus.datastore import ModbusSequentialDataBlock
 from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
@@ -166,8 +167,15 @@ class Modbus_Service:
     def __init__(self):
         self.__CNAME = "SERVICE  : [Modbus] "
         self.__agent: Modbus_Async_Client = None
-        # self.__agent_thread = threading.Thread(target = self._async_routines)
-        self.__agent_thread = multiprocessing.Process(target = self._async_routines)
+
+        self.__agent_runtime = None
+        if platform.system() == "Linux":
+            self.__agent_runtime = multiprocessing.Process(target = self._async_routines)
+        elif platform.system() == "Windows":
+            self.__agent_runtime = threading.Thread(target = self._async_routines)
+        else:
+            raise OSError("Cannot detect system type!")
+        
         self.__data_sync = threading.Thread(target = self.__data_updater)
         self.__is_requested_stop = True
 
@@ -194,9 +202,10 @@ class Modbus_Service:
         logger.debug(f"{self.__CNAME} : starting")
         
         self.__is_requested_stop = False
-        self.__agent_thread.start()
+        self.__agent_runtime.start()
         time.sleep(2)
 
+        logger.info(f"{self.__CNAME} : SUCCESS - slave hosted at http://{self.__config.get_host()[0]}:{self.__config.get_host()[1]}")
         self.__data_sync.start()
 
         logger.info(f"{self.__CNAME} : start SUCCESS")
@@ -211,7 +220,13 @@ class Modbus_Service:
         self.__is_requested_stop = True
         self.__data_sync.join()
         # self.__agent.stop()
-        self.__agent_thread.terminate()
+
+        if platform.system() == "Linux":
+            self.__agent_runtime.terminate()
+        elif platform.system() == "Windows":
+            self.__agent_runtime.join(timeout = 5)
+
+        logger.info(f"{self.__CNAME} : SUCCESS - disposed slave hosted at http://{self.__config.get_host()[0]}:{self.__config.get_host()[1]}")
 
         logger.info(f"{self.__CNAME} : stop SUCCESS")
         return ERC.SUCCESS
@@ -263,6 +278,9 @@ class Modbus_Service:
                 production = self.__simulator_ref.get_status(in_machine = map["machine"])["total_production"]
                 hr_reg[map["msw_at"]] = divmod(production, 0x10000)[0]
                 hr_reg[map["lsw_at"]] = divmod(production, 0x10000)[1]
-                self.__agent.update_register(0x3, 0x0, hr_reg)
+                self.__agent.update_register(
+                    fc = 0x3, 
+                    addr = self.__config.get_hr()["addr"], 
+                    values = hr_reg)
 
             time.sleep(1)
