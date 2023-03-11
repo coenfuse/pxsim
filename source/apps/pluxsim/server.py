@@ -150,6 +150,7 @@ class HTTP_Server:
                 if response["code"] < 400:
                     self.send_response(response["code"])
                     self.send_header("Content-Type", "application/json")
+                    self.send_header('Access-Control-Allow-Origin', '*')  # enable CORS for all domains
                     self.end_headers()
                     self.wfile.write(response["body"].encode())
                 else:
@@ -345,6 +346,25 @@ class HTTP_Server:
                 "code" : 400, 
                 "body" : 'cannot process',
                 "explain" : ''}
+            
+            # check for query block, if present. Process
+            if len(request.query) != 0:
+                queries = self.__retrieve_query_params(request.query)
+
+                # process only if the keys 'machine' and 'product' both are present
+                # in the query
+                if "machine" in queries and "product" in queries:
+                    if globals.g_PLUXSIM.switch_production(to_product = queries["product"], in_machine = queries["machine"]) is ERC.SUCCESS:
+                        response["body"] = "SUCCESS"
+                        response["code"] = 200
+                    else:
+                        response["explain"] = f"Failed to switch production to {queries['product']} in machine {queries['machine']}"
+                        response["body"] = "Internal Server Error"
+                        response["code"] = 500
+
+                # handle all the rest cases (incomplete queries and other nonsense)
+                else:
+                    response["explain"] = f"The server cannot process the provided query: {queries}"
 
             # finally
             return response

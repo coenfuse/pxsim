@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>pxsim wgui</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+    <style>
+        body {
+            padding: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="row">
+        <div class="col-6">
+            <h1 id="webui-title">PXSIM v0.3</h1>
+            <div class="float-right" style="margin-top: 25px; margin-bottom: 25px;">
+                <button id="pause-all" class="btn btn-primary mr-2">Pause All</button>
+                <button id="resume-all" class="btn btn-primary">Resume All</button>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="input-group mb-3">
+                <span class="input-group-text" id="basic-addon1">http://</span>
+                <input type="text" class="form-control" id="server-url-input" placeholder="pxsim http address">
+                <button class="btn btn-outline-primary" type="button" id="update-url-btn">Update</button>
+            </div>
+            <!--
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="data-refresh-rate-input" placeholder="Data refresh interval in seconds">
+                    <button class="btn btn-outline-primary" type="button" id="update-refresh-btn">Update</button>
+                </div>
+            -->
+        </div>
+    </div>
+
+    <!--tables-->
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col" style="width: 15%">Machine</th>
+                <th scope="col" style="width: 15%">Producing</th>
+                <th scope="col" style="width: 15%">Total Production</th>
+                <th scope="col" style="width: 15%">Running</th>
+                <th scope="col" style="width: 15%">Breakdown Pct</th>
+                <th scope="col" style="width: 25%">Action</th>
+            </tr>
+        </thead>
+
+        <tbody class="table-group-divider" id="machine-status-body">
+            <!-- Will be dynamically filled -->
+        </tbody>
+    </table>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+
+        // define requires vars
+        var refresh_rate_ms = 15000;
+
+        // Define endpoint URLs
+        var server_url = "http://0.0.0.0:80";
+        var status_endpoint = server_url + "/status";
+        var pause_sim_endpoint = server_url + "/pause";
+        var pause_machine_endpoint = pause_sim_endpoint + "?machine=";
+        var resume_sim_endpoint = server_url + "/resume";
+        var resume_machine_endpoint = resume_sim_endpoint + "?machine=";
+
+        // Function to render base table
+        function renderTableRows(data) {
+            $("#machine-status-body").empty()   // clear table body
+
+            // loop through the machines and add a row for each one
+            data.machines.forEach(function (machine) {
+                // create a new row
+                const row = $('<tr>');
+
+                // add the data for this machine to the row
+                row.append($('<td>').text(machine.name).addClass('align-middle'));
+                row.append($('<td>').text(machine.active_production).addClass('align-middle'));
+                row.append($('<td>').text(machine.total_production).addClass('align-middle'));
+                row.append($('<td>').text(machine.is_running ? 'Yes' : 'No').addClass('align-middle'));
+                row.append($('<td>').text(machine.breakdown_percentage + " %").addClass('align-middle'));
+
+                const buttonCell = $('<td>');
+
+                const pause_button = $('<button>')
+                    .addClass('btn btn-secondary pause-machine')
+                    .attr('value', machine.name)
+                    .attr('style', 'margin-right:15px')
+                    .prop('disabled', true)
+                    .html('<svg xmlns="http://www.w3.org/2000/svg" height="24" width="24"><path d="M13.525 17.875V6.125h4.35v11.75Zm-7.4 0V6.125h4.35v11.75Z" fill="#FFFFFF"/></svg>');
+
+                const resume_button = $('<button>')
+                    .addClass('btn btn-secondary resume-machine')
+                    .attr('value', machine.name)
+                    .attr('style', 'margin-right:15px')
+                    .prop('disabled', true)
+                    .html('<svg xmlns="http://www.w3.org/2000/svg" height="24" width="24"><path d="M10.275 16.275q-.375.275-.775.05-.4-.225-.4-.7v-7.25q0-.475.4-.7.4-.225.775.05l5.7 3.625q.35.25.35.65t-.35.625Z" fill="#FFFFFF"/></svg>');
+
+                buttonCell.append(pause_button);
+                buttonCell.append(resume_button);
+                row.append(buttonCell.addClass('align-middle'));
+
+                $('#machine-status-body').append(row);
+            });
+        }
+
+        // [NOT USED AT THE MOMENT] Function to enable / disable buttons
+        function toggleButtons(paused) {
+            $("#pause-all").prop("disabled", paused);
+            $("#resume-all").prop("disabled", !paused);
+            $("#pause-machine").prop("disabled", paused);
+            $("#resume-machine").prop("disabled", paused);
+        }
+
+        // Pause the whole simulator
+        $("#pause-all").on("click", function () {
+            $.get(pause_sim_endpoint, function (data) {
+                console.log(data);        // Should print SUCCESS on pausing
+            })
+        });
+
+        // Pause a specific machine
+        $("#machine-status-body").on("click", ".pause-machine", function () {
+            var machine_name = "orange"; //$(this).data('name');
+            console.log("Trying to pause " + machine_name);
+            $.get(pause_machine_endpoint + machine_name, function (data) {
+                console.log(data);
+            });
+        });
+
+        // Resume the whole simulator
+        $("#resume-all").on("click", function () {
+            $.get(resume_sim_endpoint, function (data) {
+                console.log(data);        // Should print SUCCESS on pausing
+            })
+        });
+
+        // Resume a specific machine
+        $("#machine-status-body").on("click", ".resume-machine", function () {
+            let machine_name = "orange"; // $(this).data('name');
+            console.log("Trying to resume " + machine_name);
+            $.get(resume_machine_endpoint + machine_name, function (data) {
+                console.log(data);
+            });
+        });
+
+        // Update server_url variable on button click
+        $("#update-url-btn").on("click", function() {
+            let inputVal = "http://" + $("#server-url-input").val();
+            server_url = inputVal;
+            status_endpoint = server_url + "/status";
+            pause_sim_endpoint = server_url + "/pause";
+            pause_machine_endpoint = pause_sim_endpoint + "?machine=";
+            resume_sim_endpoint = server_url + "/resume";
+            resume_machine_endpoint = resume_sim_endpoint + "?machine=";
+
+            // Re-fetch data with updated server_url
+            $.get(status_endpoint, function (data) {
+                renderTableRows(data);
+            });
+        });
+
+        // Update data refresh speed
+        $("#update-refresh-btn").on("click", function() {
+            let input = $("#data-refresh-rate-input").val();
+            console.log("Update refresh rate to ms: " + input * 1000);
+            refresh_rate_ms = $("#data-refresh-rate-input").val();
+
+            // Re-fetch data after updating polling rate to have the latest
+            // available copy of simulator before waitng for X amount of time
+            $.get(status_endpoint, function (data) {
+                renderTableRows(data);
+            });
+        })
+
+        // Set up interval to update at specified interval
+        setInterval(function () {
+            $.get(status_endpoint, function (data) {
+                renderTableRows(data);
+            });
+        }, refresh_rate_ms);
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>
