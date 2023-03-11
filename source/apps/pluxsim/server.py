@@ -268,31 +268,21 @@ class HTTP_Server:
             if len(request.query) != 0:
                 queries = self.__retrieve_query_params(request.query)
                 
-                # process if 'machine' and 'product' both are queried
-                if "machine" in queries and "product" in queries:
-                    if globals.g_PLUXSIM.pause(queries['machine'], queries['product']) is ERC.SUCCESS:
-                        response["body"] = "SUCCESS"
-                        response["code"] = 200
-                    else:
-                        response["explain"] = f'Failed to pause production for {queries["product"]}'
-                        response["body"] = "Internal Server Error"
-                        response["code"] = 500
-                
-                # process if only 'machine' is queried and not 'product'
-                elif "machine" in queries and not "product" in queries:
-                    if globals.g_PLUXSIM.pause(in_machine = queries['machine']) is ERC.SUCCESS:
-                        response["body"] = "SUCCESS"
+                # process if the key 'machine' is present in query, i.e: pause?machine=
+                if "machine" in queries:
+                    if globals.g_PLUXSIM.pause(machine = queries['machine']) is ERC.SUCCESS:
+                        response["body"] = "SUCCESS"                            # Consider this to be returned as serialized JSON
                         response["code"] = 200
                     else:
                         response["explain"] = f'Failed to pause machine {queries["machine"]}'
-                        response["body"] = "Internal Server Error"
+                        response["body"] = "Internal Server Error"              # The serialized json may cost more bandwidth, but it is more readable
                         response["code"] = 500
                 
-                # handle all the rest cases
+                # handle all the rest cases (incomplete queries and other nonsense)
                 else:
-                    response["explain"] = 'The server cannot process the provided queries'
+                    response["explain"] = f'The server cannot process the provided query: {queries}'
             
-            # handle general /pause request
+            # handle general / pause request (pause whole simulator)
             else:
                 if globals.g_PLUXSIM.pause() is ERC.SUCCESS:
                     response["body"] = 'SUCCESS'
@@ -319,31 +309,21 @@ class HTTP_Server:
             if len(request.query) != 0:
                 queries = self.__retrieve_query_params(request.query)
                 
-                # process if 'machine' and 'product' both are queried
-                if "machine" in queries and "product" in queries:
-                    if globals.g_PLUXSIM.resume(queries['machine'], queries['product']) is ERC.SUCCESS:
-                        response["body"] = "SUCCESS"
+                # process if the key 'machine' is present in the query, i.e: resume?machine=
+                if "machine" in queries:
+                    if globals.g_PLUXSIM.resume(machine = queries['machine']) is ERC.SUCCESS:
+                        response["body"] = "SUCCESS"                            # Consider this to be a serialized json instead
                         response["code"] = 200
                     else:
                         response["explain"] = f'Failed to resume production for {queries["product"]}'
                         response["body"] = "Internal Server Error"
                         response["code"] = 500
                 
-                # process if only 'machine' is queried and not 'product'
-                elif "machine" in queries and not "product" in queries:
-                    if globals.g_PLUXSIM.resume(in_machine = queries['machine']) is ERC.SUCCESS:
-                        response["body"] = "SUCCESS"
-                        response["code"] = 200
-                    else:
-                        response["explain"] = f'Failed to resume machine {queries["machine"]}'
-                        response["body"] = "Internal Server Error"
-                        response["code"] = 500
-                
-                # handle all the rest cases
+                # handle all the rest cases (incomplete queries and other nonsense)
                 else:
-                    response["explain"] = 'The server cannot process the provided queries'
+                    response["explain"] = f'The server cannot process the provided query: {queries}'
             
-            # handle general /resume request
+            # handle general /resume request (resume whole simulator)
             else:
                 if globals.g_PLUXSIM.resume() is ERC.SUCCESS:
                     response["body"] = 'SUCCESS'
