@@ -42,7 +42,7 @@ class HTTP_Server:
         self.__server  = None
         self.__runtime = threading.Thread(target = self.__job)
 
-        # Earlier I initialzed a server instance here on self.__server whic was
+        # Earlier I initialzed a server instance here on self.__server which was
         # then followed by self.__server.serve_forever in self.__runtime target.
         # This worked well in practice and on windows. But on a deployment in
         # production using Docker, this won't work.
@@ -151,6 +151,7 @@ class HTTP_Server:
                     self.send_response(response["code"])
                     self.send_header("Content-Type", "application/json")
                     self.send_header('Access-Control-Allow-Origin', '*')  # enable CORS for all domains
+                    self.send_header('Allow', 'PUT')
                     self.end_headers()
                     self.wfile.write(response["body"].encode())
                 else:
@@ -193,6 +194,31 @@ class HTTP_Server:
                     code    = 404, 
                     message = "NOT FOUND",
                     explain = f"Server can't find the requested resource {self.path}")
+
+
+        # docs
+        # ----------------------------------------------------------------------
+        def do_PUT(self):
+            content_length = int(self.headers.get('Content-Length'))
+            payload = self.rfile.read(content_length).decode('utf-8')
+            parsed_payload = json.loads(payload)
+
+            # Do whatever you want to do with the payload data
+            # ...
+
+            response = {
+                "code": 200,
+                "body": json.dumps({"message": "PUT request received and processed"}),
+                "explain": "OK"
+            }
+
+            return(response)
+
+            self.send_response(response["code"])
+            self.send_header("Content-Type", "application/json")
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(response["body"].encode())
 
 
         # ======================================================================
@@ -272,11 +298,11 @@ class HTTP_Server:
                 # process if the key 'machine' is present in query, i.e: pause?machine=
                 if "machine" in queries:
                     if globals.g_PLUXSIM.pause(machine = queries['machine']) is ERC.SUCCESS:
-                        response["body"] = "SUCCESS"                            # Consider this to be returned as serialized JSON
+                        response["body"] = json.dumps({ "status" : "SUCCESS" })
                         response["code"] = 200
                     else:
                         response["explain"] = f'Failed to pause machine {queries["machine"]}'
-                        response["body"] = "Internal Server Error"              # The serialized json may cost more bandwidth, but it is more readable
+                        response["body"] = json.dumps({ "status" : "Internal Server Error" })
                         response["code"] = 500
                 
                 # handle all the rest cases (incomplete queries and other nonsense)
@@ -286,11 +312,11 @@ class HTTP_Server:
             # handle general / pause request (pause whole simulator)
             else:
                 if globals.g_PLUXSIM.pause() is ERC.SUCCESS:
-                    response["body"] = 'SUCCESS'
+                    response["body"] = json.dumps({ "status" : "SUCCESS" })
                     response["code"] = 200
                 else:
                     response["explain"] = 'Failed to pause production simulator'
-                    response["body"] = 'Internal Server Error'
+                    response["body"] = json.dumps({ "status" : "Internal Server Error" })
                     response["code"] = 500
                     
             # finally
@@ -313,11 +339,11 @@ class HTTP_Server:
                 # process if the key 'machine' is present in the query, i.e: resume?machine=
                 if "machine" in queries:
                     if globals.g_PLUXSIM.resume(machine = queries['machine']) is ERC.SUCCESS:
-                        response["body"] = "SUCCESS"                            # Consider this to be a serialized json instead
+                        response["body"] = json.dumps({ "status" : "SUCCESS" })
                         response["code"] = 200
                     else:
                         response["explain"] = f'Failed to resume production for {queries["product"]}'
-                        response["body"] = "Internal Server Error"
+                        response["body"] = json.dumps({ "status" : "Internal Server Error" })
                         response["code"] = 500
                 
                 # handle all the rest cases (incomplete queries and other nonsense)
@@ -327,11 +353,11 @@ class HTTP_Server:
             # handle general /resume request (resume whole simulator)
             else:
                 if globals.g_PLUXSIM.resume() is ERC.SUCCESS:
-                    response["body"] = 'SUCCESS'
+                    response["body"] = json.dumps({ "status" : "SUCCESS" })
                     response["code"] = 200
                 else:
                     response["explain"] = 'Failed to resume production simulator'
-                    response["body"] = 'Internal Server Error'
+                    response["body"] = json.dumps({ "status" : "Internal Server Error" })
                     response["code"] = 500
                     
             # finally
@@ -355,11 +381,11 @@ class HTTP_Server:
                 # in the query
                 if "machine" in queries and "product" in queries:
                     if globals.g_PLUXSIM.switch_production(to_product = queries["product"], in_machine = queries["machine"]) is ERC.SUCCESS:
-                        response["body"] = "SUCCESS"
+                        response["body"] = json.dumps({ "status" : "SUCCESS" })
                         response["code"] = 200
                     else:
                         response["explain"] = f"Failed to switch production to {queries['product']} in machine {queries['machine']}"
-                        response["body"] = "Internal Server Error"
+                        response["body"] = json.dumps({ "status" : "Internal Server Error" })
                         response["code"] = 500
 
                 # handle all the rest cases (incomplete queries and other nonsense)

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Example Client</title>
+</head>
+<body>
+	<h1>Example Client</h1>
+
+	<p>Current value: <span id="current-value"></span></p>
+
+	<label for="new-value">New value:</label>
+	<input type="text" id="new-value">
+
+	<button id="update-button">Update</button>
+
+	<script>
+		const currentValueElement = document.getElementById('current-value');
+		const newValueInput = document.getElementById('new-value');
+		const updateButton = document.getElementById('update-button');
+
+        const url = "http://localhost:8080";
+
+		// Get the current value from the server
+		fetch(url + '/get')
+			.then(response => response.json())
+			.then(data => {
+				currentValueElement.innerText = data.value;
+			});
+
+		// Update the value on the server when the button is clicked
+		updateButton.addEventListener('click', () => {
+			const newValue = newValueInput.value;
+			fetch(url + '/put', {
+				method: 'PUT',
+				body: JSON.stringify({ value: newValue }),
+				headers: { 'Content-Type': 'application/json' }
+			})
+				.then(response => response.json())
+				.then(data => {
+					currentValueElement.innerText = data.value;
+				});
+		});
+	</script>
+</body>
+</html>
