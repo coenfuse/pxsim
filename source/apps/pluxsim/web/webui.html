@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>pxsim v0.3b-4</title>
+    <title>pxsim v0.3b-5</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
     <style>
@@ -17,7 +17,7 @@
 <body>
     <div class="row">
         <div class="col-6">
-            <h1 id="webui-title">PXSIM v0.3b-4</h1>
+            <h1 id="webui-title">PXSIM v0.3b-5</h1>
             <div class="float-right" style="margin-top: 25px; margin-bottom: 25px;">
                 <button id="pause-all" class="btn btn-primary mr-2" style="min-width: 6vw;">Pause All</button>
                 <button id="resume-all" class="btn btn-primary" style="min-width: 6vw;">Resume All</button>
@@ -50,14 +50,15 @@
     <table class="table table-lg table-borderless">
         <thead>
             <tr>
-                <th scope="col" style="width: 5%; text-align: center;">#</th>
+                <th scope="col" style="width: 2.5%; text-align: center;"></th>
+                <!-- <th scope="col" style="width: 2.5%; text-align: center;">#</th>-->
                 <th scope="col" style="width: 15%;">Machine</th>
-                <th scope="col" style="width: 15%">Producing</th>
-                <th scope="col" style="width: 15%">Total Production</th>
-                <th scope="col" style="width: 15%">Running</th>
-                <th scope="col" style="width: 15%">Breakdown Pct</th>
-                <!-- <th scope="col" style="width: 25%">Action</th> -->
-                <th scope="col" style="width: 20%">Switch to</th>
+                <th scope="col" style="width: 15%;">Producing</th>
+                <th scope="col" style="width: 15%;">Last Interval (s)</th>
+                <th scope="col" style="width: 15%;">Total Production</th>
+                <th scope="col" style="width: 15%;">Breakdown (%)</th>
+                <th scope="col" style="width: 10%;"></th> <!-- Switch To-->
+                <th scope="col" style="width: 15%;"></th> <!-- Controls -->
             </tr>
         </thead>
 
@@ -68,9 +69,8 @@
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-
         // define requires vars
-        var refresh_rate_ms = 15000;
+        var refresh_rate_ms = 3000;
 
         // Define endpoint URLs
         var server_url = "http://0.0.0.0:80";
@@ -91,13 +91,24 @@
 
             // loop through the machines and add a row for each one
             data.machines.forEach(function (machine, index) {
+
                 // create a new row
                 let row = $('<tr>');
 
-                // add index for the machine (incrementing index since it starts with 0)
-                row.append($('<td>').text(index + 1).addClass('align-middle').attr('style', 'text-align:center;'));
+                if (machine.is_running) {
+                    row.append($('<td>')
+                        .html('<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="2.5" fill="#34C759"/></svg>')
+                        .addClass('align-middle'));
+                }
+                else {
+                    row.append($('<td>')
+                        .html('<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="2.5" fill="#FF3B30"/></svg>')
+                        .addClass('align-middle'));
+                }
 
-                // add the data for this machine to the row
+                // add index for the machine (incrementing index since it starts with 0)
+                // row.append($('<td>').text(index + 1).addClass('align-middle').attr('style', 'text-align:center;'));
+
                 row.append($('<td>').text(machine.name)
                     .addClass('align-middle'));
 
@@ -105,19 +116,12 @@
                     .text(machine.active_production)
                     .addClass('align-middle'));
 
-                row.append($('<td>').text(machine.total_production)
+                row.append($('<td>')
+                    .text(parseFloat((machine.last_production_duration_s).toFixed(2)))
                     .addClass('align-middle'));
 
-                if (machine.is_running) {
-                    row.append($('<td>')
-                        .text('Yes')
-                        .addClass('align-middle text-success'));
-                }
-                else {
-                    row.append($('<td>')
-                        .text('No')
-                        .addClass('align-middle text-danger'));
-                }
+                row.append($('<td>').text(machine.total_production)
+                    .addClass('align-middle'));
 
                 row.append($('<td>')
                     .text(`${machine.breakdown_percentage} %`)
@@ -136,45 +140,48 @@
                 </div>
                 */
 
+                // The following code adds production switch to a machine and
+                // is not working due to CORS error (might get fixed with PUT API)
+                /*
                 let dropdown = $('<div>').addClass('dropdown')
-                let dropdown_btn = $('<button>')
-                    .addClass('btn btn-light dropdown-toggle')
-                    .attr("id", `${machine.name}-product-dropdown`)
-                    .attr('style', 'min-width: 7vw;')
+                    let dropdown_btn = $('<button>')
+                        .addClass('btn btn-light dropdown-toggle')
+                        .attr("id", `${machine.name}-product-dropdown`)
+                        .attr('style', 'min-width: 7vw;')
                     .attr("data-bs-toggle", "dropdown")
                     .attr("aria-expanded", "false")
                     .html('Product ')
+                    
+                    let dropdown_menu = $('<div>').addClass('dropdown-menu').attr('aria-labelledby', `${machine.name}-product-dropdown`);
+                        machine.products.forEach(function (product, index) {
+                            if (product != machine.active_production) {
+                                
+                                let item = $('<button>')
+                                    .addClass('dropdown-item')
+                                    .attr("id", `${machine.name}-${product}`)                 // This will be used for switching
+                                    .prop('disabled', true)
+                                    .html(`${index + 1}.  ${product}`);
 
-                let dropdown_menu = $('<div>').addClass('dropdown-menu').attr('aria-labelledby', `${machine.name}-product-dropdown`);
-                machine.products.forEach(function (product, index) {
-                    if (product != machine.active_production) {
+                                    dropdown_menu.append(item);
+                                }
+                            });
+                            
+                            dropdown.append(dropdown_btn);
+                            dropdown.append(dropdown_menu);
+                            row.append(dropdown);
+                            
+                            // Handle the click event for dropdown items
+                            dropdown_menu.on('click', '.dropdown-item', function (event) {
+                                let id = $(event.target).attr('id');
+                                let [machine, product] = id.split('-');
+                                console.log(`Trying to switch production to ${product.toUpperCase()} in ${machine.toUpperCase()}`);
 
-                        let item = $('<button>')
-                            .addClass('dropdown-item')
-                            .attr("id", `${machine.name}-${product}`)                 // This will be used for switching
-                            .prop('disabled', true)
-                            .html(`${index + 1}.  ${product}`);
-
-                        dropdown_menu.append(item);
-                    }
-                });
-
-                dropdown.append(dropdown_btn);
-                dropdown.append(dropdown_menu);
-                row.append(dropdown);
-
-                // Handle the click event for dropdown items
-                dropdown_menu.on('click', '.dropdown-item', function (event) {
-                    let id = $(event.target).attr('id');
-                    let [machine, product] = id.split('-');
-                    console.log(`Trying to switch production to ${product.toUpperCase()} in ${machine.toUpperCase()}`);
-
-                    // animate button
-                    $(`#${id}`).html(loadingSpinner);
-
-                    // perform action
-                    /*
-                    $.get({
+                                // animate button
+                                $(`#${id}`).html(loadingSpinner);
+                                
+                                // perform action
+                                /*
+                                $.get({
                         url: `${switch_production_endpoint}machine=${machine}&product=${product}`,
                         success: function (response) {
                             console.log(`production switch SUCCESS in ${machine}`);
@@ -200,11 +207,11 @@
                             console.log('PUT request error: ' + error);
                         }
                     });
-                    */
                 });
+                */
 
                 // The following code adds pause / resume buttons to a machine
-                // is not working due to CORS error (might get fixed with POST API)
+                // is not working due to CORS error (might get fixed with PUT API)
                 /*
                 const pause_button = $('<button>')
                     .addClass('btn btn-secondary pause-machine')
@@ -213,24 +220,24 @@
                     .prop('disabled', true)
                     .html('<svg xmlns="http://www.w3.org/2000/svg" height="24" width="24"><path d="M13.525 17.875V6.125h4.35v11.75Zm-7.4 0V6.125h4.35v11.75Z" fill="#FFFFFF"/></svg>');
                     
-                const resume_button = $('<button>')
-                    .addClass('btn btn-secondary resume-machine')
-                    .attr('value', machine.name)
-                    .attr('style', 'margin-right:15px; opacity: 20%;')
+                    const resume_button = $('<button>')
+                        .addClass('btn btn-secondary resume-machine')
+                        .attr('value', machine.name)
+                        .attr('style', 'margin-right:15px; opacity: 20%;')
                     .prop('disabled', true)
                     .html('<svg xmlns="http://www.w3.org/2000/svg" height="24" width="24"><path d="M10.275 16.275q-.375.275-.775.05-.4-.225-.4-.7v-7.25q0-.475.4-.7.4-.225.775.05l5.7 3.625q.35.25.35.65t-.35.625Z" fill="#FFFFFF"/></svg>');
 
-                const buttonCell = $('<td>');
+                    const buttonCell = $('<td>');
                 buttonCell.append(pause_button);
                 buttonCell.append(resume_button);
                 row.append(buttonCell.addClass('align-middle'));
                 */
-
+                
                 $('#machine-status-body').append(row);
             });
         }
-
-
+        
+        
         // [NOT USED AT THE MOMENT] Function to enable / disable buttons
         function toggleButtons(paused) {
             $("#pause-all").prop("disabled", paused);
@@ -238,7 +245,7 @@
             $("#pause-machine").prop("disabled", paused);
             $("#resume-machine").prop("disabled", paused);
         }
-
+        
 
         // Pause the whole simulator
         $("#pause-all").on("click", function () {

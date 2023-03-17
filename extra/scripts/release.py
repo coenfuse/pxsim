@@ -111,21 +111,21 @@ def fill_data():
         writer.write(data)
         writer.close()
 
-    if is_success:
-        is_success = os.path.isdir(f'{OUTDIR}/{PKG_FOLDER}/data')
+    # if is_success:
+    #    is_success = os.path.isdir(f'{OUTDIR}/{PKG_FOLDER}/data')
 
     if is_success:
-        dbcfile = read_from(f'{WORKSPACE}/data/can/scm.dbc')
-        is_success = dbcfile is not None
+        webui = read_from(f'{WORKSPACE}/source/apps/pluxsim/web/webui.html')
+        is_success = webui is not None
 
-    if is_success:
-        os.mkdir(f'{OUTDIR}/{PKG_FOLDER}/data/can')
-        is_success = os.path.exists(f'{OUTDIR}/{PKG_FOLDER}/data/can')
+    # if is_success:
+    #     os.mkdir(f'{OUTDIR}/{PKG_FOLDER}/data/can')
+    #     is_success = os.path.exists(f'{OUTDIR}/{PKG_FOLDER}/data/can')
 
     if is_success:
         write_into(
-            file = f'{OUTDIR}/{PKG_FOLDER}/data/can/scm.dbc',
-            data = dbcfile
+            file = f'{OUTDIR}/{PKG_FOLDER}/webui.html',
+            data = webui
         )
     
     return is_success
@@ -253,8 +253,8 @@ def populate_release_directory():
     if is_success:
         is_success = create_config()
 
-    # if is_success:
-    #     is_success = fill_data()
+    if is_success:
+        is_success = fill_data()
 
     # if is_success:
     #     is_success = generate_docs()

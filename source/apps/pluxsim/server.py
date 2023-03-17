@@ -185,6 +185,7 @@ class HTTP_Server:
                 self.send_response(200)
                 self.send_header("Content-Type", "text/plain")
                 self.end_headers()
+                # self.wfile.write(open(file = "/media/sarthak/sadu drive/desktop/new/dev/px/px_sim/source/apps/pluxsim/web/webui.html").read().encode())
                 self.wfile.write(f"{APP.NAME} v{APP.VERS} running".encode())
 
             # docs
