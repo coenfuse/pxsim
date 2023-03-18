@@ -256,6 +256,7 @@ class Simulator_T:
     # docs
     # --------------------------------------------------------------------------
     def stop(self) -> ERC:
+        logger.debug(f"{self.__CNAME} : stopping")
         if all(machine.stop() is ERC.SUCCESS for machine in self.__machines.values()):
             return ERC.SUCCESS
         return ERC.FAILURE
