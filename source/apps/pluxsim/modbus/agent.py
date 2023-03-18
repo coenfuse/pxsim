@@ -278,8 +278,6 @@ class Modbus_Service:
                 production = self.__simulator_ref.get_status(in_machine = map["machine"])["total_production"]
                 hr_reg[map["lsw_at"]] = divmod(production, 0x10000)[0]
                 hr_reg[map["msw_at"]] = divmod(production, 0x10000)[1]
-                
-                print(self.__config.get_hr()["addr"])
 
                 self.__agent.update_register(
                     self.__config.get_hr()["func"], 
