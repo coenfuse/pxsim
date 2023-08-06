@@ -4,6 +4,7 @@
 
 
 #standard imports
+import time
 from typing import Dict
 
 # internal imports
@@ -255,6 +256,7 @@ class Simulator_T:
     # docs
     # --------------------------------------------------------------------------
     def stop(self) -> ERC:
+        logger.debug(f"{self.__CNAME} : stopping")
         if all(machine.stop() is ERC.SUCCESS for machine in self.__machines.values()):
             return ERC.SUCCESS
         return ERC.FAILURE
@@ -274,8 +276,8 @@ class Simulator_T:
 
         # resume all machines, that are paused
         else:
-            if not all(machine.resume() is ERC.SUCCESS for machine in self.__machines.values()):
-                status = ERC.FAILURE
+            if all(machine.resume() is ERC.SUCCESS for machine in self.__machines.values()):
+                status = ERC.SUCCESS
 
         return status
 
@@ -294,8 +296,8 @@ class Simulator_T:
 
         # pause all machines, that are running
         else:
-            if not all(machine.pause() is ERC.SUCCESS for machine in self.__machines.values()):
-                status = ERC.FAILURE
+            if all(machine.pause() is ERC.SUCCESS for machine in self.__machines.values()):
+               status = ERC.SUCCESS
 
         return status
 

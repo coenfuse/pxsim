@@ -296,18 +296,19 @@ class Machine_T:
             return ERC.MACHINE_FAILED_TO_STOP
 
 
-    # resumes a paused machine
+    # resumes a paused machine, # TODO : Use CV here
     # --------------------------------------------------------------------------
     def resume(self) -> ERC:
         self.__is_paused = False
-        time.sleep(3)               # wait for thread to resume
+        time.sleep(2)               # wait for thread to resume
         return ERC.SUCCESS if self.is_running() else ERC.MACHINE_FAILED_TO_RESUME
 
 
-    # pauses a machine
+    # pauses a machine, # TODO : Use CV here
     # --------------------------------------------------------------------------
     def pause(self) -> ERC:
         self.__is_paused = True
+        time.sleep(1)               # wait for thread to pause
         return ERC.SUCCESS if not self.is_running() else ERC.MACHINE_FAILED_TO_PAUSE
 
 
@@ -405,10 +406,10 @@ class Machine_T:
             self.__evaluate_machine_status(self.__last_production_duration_s, product)
             self.__db[product_name] = product
 
-            # block this thread if paused
+            # block this thread if paused # TODO : USE CV here!
             while self.__is_paused:
                 self.__state = self.STATE.PAUSED
-                time.sleep(3)
+                time.sleep(1)
 
 
     # docs

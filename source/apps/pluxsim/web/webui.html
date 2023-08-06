@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>pxsim v0.3b-8</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+    <style>
+        body {
+            padding: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="row">
+        <div class="col-6">
+            <h1 id="webui-title">PXSIM v0.3b-8</h1>
+            <div class="float-right" style="margin-top: 25px; margin-bottom: 25px;">
+                <button id="pause-all" class="btn btn-primary mr-2" style="min-width: 6vw;">Pause All</button>
+                <button id="resume-all" class="btn btn-primary" style="min-width: 6vw;">Resume All</button>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="input-group mb-3">
+                <span class="input-group-text" id="basic-addon1">http://</span>
+                <input type="text" class="form-control" id="server-url-input" placeholder="pxsim http address">
+                <button class="btn btn-outline-primary" style="min-width: 6vw;" type="button"
+                    id="update-url-btn">Connect / Refresh</button>
+            </div>
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="ctrl-machine-name" placeholder="machine-name">
+                <button class="btn btn-outline-primary" style="min-width: 6vw;" type="button"
+                    id="pause-machine">Pause</button>
+                <button class="btn btn-outline-primary" style="min-width: 6vw;" type="button"
+                    id="resume-machine">Resume</button>
+            </div>
+            <!--
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="data-refresh-rate-input" placeholder="Data refresh interval in seconds">
+                    <button class="btn btn-outline-primary" type="button" id="update-refresh-btn">Update</button>
+                </div>
+            -->
+        </div>
+    </div>
+
+    <!--tables-->
+    <table class="table table-lg table-borderless">
+        <thead>
+            <tr>
+                <th scope="col" style="width: 2.5%; text-align: center;"></th>
+                <!-- <th scope="col" style="width: 2.5%; text-align: center;">#</th>-->
+                <th scope="col" style="width: 15%;">Machine</th>
+                <th scope="col" style="width: 15%;">Producing</th>
+                <th scope="col" style="width: 15%;">Last Interval (s)</th>
+                <th scope="col" style="width: 15%;">Total Production</th>
+                <th scope="col" style="width: 15%;">Breakdown (%)</th>
+                <th scope="col" style="width: 10%;"></th> <!-- Switch To-->
+                <th scope="col" style="width: 15%;"></th> <!-- Controls -->
+            </tr>
+        </thead>
+
+        <tbody class="table-group-divider" id="machine-status-body">
+            <!-- Will be dynamically filled -->
+        </tbody>
+    </table>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // define requires vars
+        var refresh_rate_ms = 3000;
+
+        // Define endpoint URLs
+        var server_url = "http://0.0.0.0:80";
+        var status_endpoint = server_url + "/status";
+        var pause_sim_endpoint = server_url + "/pause";
+        var pause_machine_endpoint = pause_sim_endpoint + "?machine=";
+        var resume_sim_endpoint = server_url + "/resume";
+        var resume_machine_endpoint = resume_sim_endpoint + "?machine=";
+        var switch_production_endpoint = server_url + "/switch?";
+
+        // cosmetic variables
+        const loadingSpinner = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span><span class="visually-hidden">Loading...</span>';
+
+
+        // Function to render base table
+        function renderTableRows(data) {
+            $("#machine-status-body").empty()   // clear table body
+
+            // loop through the machines and add a row for each one
+            data.machines.forEach(function (machine, index) {
+
+                // create a new row
+                let row = $('<tr>');
+
+                if (machine.is_running) {
+                    row.append($('<td>')
+                        .html('<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="2.5" fill="#34C759"/></svg>')
+                        .addClass('align-middle'));
+                }
+                else {
+                    row.append($('<td>')
+                        .html('<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="2.5" fill="#FF3B30"/></svg>')
+                        .addClass('align-middle'));
+                }
+
+                // add index for the machine (incrementing index since it starts with 0)
+                // row.append($('<td>').text(index + 1).addClass('align-middle').attr('style', 'text-align:center;'));
+
+                row.append($('<td>').text(machine.name)
+                    .addClass('align-middle'));
+
+                row.append($('<td>')
+                    .text(machine.active_production)
+                    .addClass('align-middle'));
+
+                row.append($('<td>')
+                    .text(parseFloat((machine.last_production_duration_s).toFixed(2)))
+                    .addClass('align-middle'));
+
+                row.append($('<td>').text(machine.total_production)
+                    .addClass('align-middle'));
+
+                row.append($('<td>')
+                    .text(`${machine.breakdown_percentage} %`)
+                    .addClass('align-middle'));
+
+                /*
+                <div class="dropdown">
+                    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Dropdown
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><button class="dropdown-item" type="button">Action</button></li>
+                        <li><button class="dropdown-item" type="button">Another action</button></li>
+                        <li><button class="dropdown-item" type="button">Something else here</button></li>
+                    </ul>
+                </div>
+                */
+
+                // The following code adds production switch to a machine and
+                // is not working due to CORS error (might get fixed with PUT API)
+                /*
+                let dropdown = $('<div>').addClass('dropdown')
+                    let dropdown_btn = $('<button>')
+                        .addClass('btn btn-light dropdown-toggle')
+                        .attr("id", `${machine.name}-product-dropdown`)
+                        .attr('style', 'min-width: 7vw;')
+                    .attr("data-bs-toggle", "dropdown")
+                    .attr("aria-expanded", "false")
+                    .html('Product ')
+                    
+                    let dropdown_menu = $('<div>').addClass('dropdown-menu').attr('aria-labelledby', `${machine.name}-product-dropdown`);
+                        machine.products.forEach(function (product, index) {
+                            if (product != machine.active_production) {
+                                
+                                let item = $('<button>')
+                                    .addClass('dropdown-item')
+                                    .attr("id", `${machine.name}-${product}`)                 // This will be used for switching
+                                    .prop('disabled', true)
+                                    .html(`${index + 1}.  ${product}`);
+
+                                    dropdown_menu.append(item);
+                                }
+                            });
+                            
+                            dropdown.append(dropdown_btn);
+                            dropdown.append(dropdown_menu);
+                            row.append(dropdown);
+                            
+                            // Handle the click event for dropdown items
+                            dropdown_menu.on('click', '.dropdown-item', function (event) {
+                                let id = $(event.target).attr('id');
+                                let [machine, product] = id.split('-');
+                                console.log(`Trying to switch production to ${product.toUpperCase()} in ${machine.toUpperCase()}`);
+
+                                // animate button
+                                $(`#${id}`).html(loadingSpinner);
+                                
+                                // perform action
+                                /*
+                                $.get({
+                        url: `${switch_production_endpoint}machine=${machine}&product=${product}`,
+                        success: function (response) {
+                            console.log(`production switch SUCCESS in ${machine}`);
+                            refreshTable();
+                        },
+                        error: function (xhr, status, error) {
+                            console.log(`production switch FAILURE in ${machine} with error: ${error}`);
+                        },
+                        complete: function () {
+                            $(`#${id}`).html(product);            // restore pre-animation state by placing name instead of animation
+                        }
+                    });
+                    
+                    $.ajax({
+                        url: '/example',
+                        type: 'PUT',
+                        data: JSON.stringify({ example: 'data' }),
+                        contentType: 'application/json',
+                        success: function (response) {
+                            console.log('PUT request successful');
+                        },
+                        error: function (xhr, status, error) {
+                            console.log('PUT request error: ' + error);
+                        }
+                    });
+                });
+                */
+
+                // The following code adds pause / resume buttons to a machine
+                // is not working due to CORS error (might get fixed with PUT API)
+                /*
+                const pause_button = $('<button>')
+                    .addClass('btn btn-secondary pause-machine')
+                    .attr('value', machine.name)
+                    .attr('style', 'margin-right:15px; opacity: 20%;')
+                    .prop('disabled', true)
+                    .html('<svg xmlns="http://www.w3.org/2000/svg" height="24" width="24"><path d="M13.525 17.875V6.125h4.35v11.75Zm-7.4 0V6.125h4.35v11.75Z" fill="#FFFFFF"/></svg>');
+                    
+                    const resume_button = $('<button>')
+                        .addClass('btn btn-secondary resume-machine')
+                        .attr('value', machine.name)
+                        .attr('style', 'margin-right:15px; opacity: 20%;')
+                    .prop('disabled', true)
+                    .html('<svg xmlns="http://www.w3.org/2000/svg" height="24" width="24"><path d="M10.275 16.275q-.375.275-.775.05-.4-.225-.4-.7v-7.25q0-.475.4-.7.4-.225.775.05l5.7 3.625q.35.25.35.65t-.35.625Z" fill="#FFFFFF"/></svg>');
+
+                    const buttonCell = $('<td>');
+                buttonCell.append(pause_button);
+                buttonCell.append(resume_button);
+                row.append(buttonCell.addClass('align-middle'));
+                */
+                
+                $('#machine-status-body').append(row);
+            });
+        }
+        
+        
+        // [NOT USED AT THE MOMENT] Function to enable / disable buttons
+        function toggleButtons(paused) {
+            $("#pause-all").prop("disabled", paused);
+            $("#resume-all").prop("disabled", !paused);
+            $("#pause-machine").prop("disabled", paused);
+            $("#resume-machine").prop("disabled", paused);
+        }
+        
+
+        // Pause the whole simulator
+        $("#pause-all").on("click", function () {
+
+            // animate button
+            $(this).html(loadingSpinner);
+
+            // perform action
+            $.get({
+                url: pause_sim_endpoint,
+                success: function (response) {
+                    console.log("Simulator pause SUCCESS");
+                    refreshTable()
+                },
+                error: function (xhr, status, error) {
+                    console.log(`Simulator pause FAILURE with error: ${error}`);
+                },
+                complete: function () {
+                    $("#pause-all").html("Pause All");              // restore pre-animation state of button
+                }
+            });
+        });
+
+
+        // Pause a specific machine (this button is loaded once and obeys CORS)
+        $("#pause-machine").on("click", function () {
+
+            // animate button
+            $(this).html(loadingSpinner);
+
+            // perform action
+            let machine_name = $("#ctrl-machine-name").val();
+            $.get({
+                url: pause_sim_endpoint + "?machine=" + machine_name,
+                success: function () {
+                    console.log(`${machine_name} pause SUCCESS`)
+                    refreshTable();
+                },
+                error: function (xhr, status, error) {
+                    console.log(`${machine_name} pause FAILURE with error: ${error}`);
+                    if (xhr.status === 500) {
+                        $("#ctrl-machine-name").addClass("is-invalid");
+                    }
+                },
+                complete: function () {
+                    $("#pause-machine").html("Pause");              // restore pre-animation state of button
+                }
+            });
+        });
+
+
+        // Resume the whole simulator
+        $("#resume-all").on("click", function () {
+
+            // animate button
+            $(this).html(loadingSpinner);
+
+            // perform action
+            $.get({
+                url: resume_sim_endpoint,
+                success: function () {
+                    console.log("Simulator resume SUCCESS");
+                    refreshTable()
+                },
+                error: function (xhr, status, error) {
+                    console.log(`Simulator resume FAILURE with error: ${error}`);
+                },
+                complete: function () {
+                    $("#resume-all").html("Resume All");        // restore pre-animation state of button
+                }
+            });
+        });
+
+
+        // Resume a specific machine (this button is loaded once and obeys CORS)
+        $("#resume-machine").on("click", function () {
+
+            // animate button
+            $(this).html(loadingSpinner);
+
+            // perform action
+            let machine_name = $("#ctrl-machine-name").val();
+            $.get({
+                url: resume_sim_endpoint + "?machine=" + machine_name,
+                success: function () {
+                    console.log(`${machine_name} resume SUCCESS`)
+                    refreshTable();
+                },
+                error: function (xhr, status, error) {
+                    console.log(`${machine_name} resume FAILURE with error: ${error}`);
+                },
+                complete: function () {
+                    $("#resume-machine").html("Resume");        // restore pre-animation state of button
+                }
+            });
+        });
+
+
+        // Update server_url variable on button click
+        $("#update-url-btn").on("click", function () {
+            let inputVal = "http://" + $("#server-url-input").val();
+            server_url = inputVal;
+            status_endpoint = server_url + "/status";
+            pause_sim_endpoint = server_url + "/pause";
+            pause_machine_endpoint = pause_sim_endpoint + "?machine=";
+            resume_sim_endpoint = server_url + "/resume";
+            resume_machine_endpoint = resume_sim_endpoint + "?machine=";
+
+            refreshTable();
+        });
+
+
+        // Update data refresh speed
+        $("#update-refresh-btn").on("click", function () {
+            let input = $("#data-refresh-rate-input").val();
+            console.log("Update refresh rate to ms: " + input * 1000);
+            refresh_rate_ms = $("#data-refresh-rate-input").val();
+
+            refreshTable();
+        })
+
+
+        // Refresh the table with new data
+        function refreshTable() {
+            $.get({
+                url: status_endpoint,
+                success: function (response) {
+                    renderTableRows(response);
+                    // console.log("Table refresh SUCCESS");
+                },
+                error: function (xhr, status, error) {
+                    console.log("Table refresh FAILURE with error: " + error);
+                }
+            });
+        }
+
+
+        // Set up interval to update at specified interval
+        setInterval(function () { refreshTable(); }, refresh_rate_ms);
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
+        crossorigin="anonymous"></script>
+
+    <!-- include jQuery and Bootstrap JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>

@@ -268,13 +268,13 @@ class Pluxsim:
             logger.debug(f"{self.__NAME} : stopping")
 
             if status == ERC.SUCCESS:
+                status = self.__modbus_server.stop()
+
+            if status == ERC.SUCCESS:
                 status = self.__web_server.stop()
 
             if status == ERC.SUCCESS:
                 status = self.__simulator.stop()
-
-            if status == ERC.SUCCESS:
-                status = self.__modbus_server.stop()
 
             '''
             try:
