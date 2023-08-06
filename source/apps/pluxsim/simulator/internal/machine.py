@@ -215,7 +215,7 @@ class Machine_T:
 
     # docs
     # --------------------------------------------------------------------------
-    def __init__(self, name: str, breakdown_pct: float = 0.0):
+    def __init__(self, name: str, breakdown_pct: float = 0.0, total_production_init: int = 0):
         self.__CNAME = "MACHINE "
         self.__name  = name
 
@@ -229,6 +229,7 @@ class Machine_T:
         self.__breakdown_pct = breakdown_pct if (breakdown_pct <= 100.0) and (breakdown_pct >= 0.5) else 0.5
         self.__state = self.STATE.INACTIVE
         self.__last_production_duration_s = 0
+        self.__total_production = total_production_init
 
         self.__db = {}
 
@@ -262,11 +263,12 @@ class Machine_T:
 
     # docs
     # --------------------------------------------------------------------------
-    def start(self, production_for = "") -> ERC:
+    def start(self, production_for = None) -> ERC:
         self.__is_paused = False
         self.__is_requested_stop = False
 
-        if len(production_for) > 0:
+        # start production for a specific product (if mentioned)
+        if production_for in self.__db:
             self.__active_production = production_for
 
         self.__runtime.start()
@@ -294,18 +296,19 @@ class Machine_T:
             return ERC.MACHINE_FAILED_TO_STOP
 
 
-    # resumes a paused machine
+    # resumes a paused machine, # TODO : Use CV here
     # --------------------------------------------------------------------------
     def resume(self) -> ERC:
         self.__is_paused = False
-        time.sleep(3)               # wait for thread to resume
+        time.sleep(2)               # wait for thread to resume
         return ERC.SUCCESS if self.is_running() else ERC.MACHINE_FAILED_TO_RESUME
 
 
-    # pauses a machine
+    # pauses a machine, # TODO : Use CV here
     # --------------------------------------------------------------------------
     def pause(self) -> ERC:
         self.__is_paused = True
+        time.sleep(1)               # wait for thread to pause
         return ERC.SUCCESS if not self.is_running() else ERC.MACHINE_FAILED_TO_PAUSE
 
 
@@ -327,6 +330,7 @@ class Machine_T:
             "active_production" : "",                                           # str / None
             "breakdown_percentage" : None,                                      # float
             "state" : None,                                                     # str
+            "total_production" : 0,                                             # int
             "last_production_duration_s" : 0                                    # float
         }
 
@@ -343,6 +347,7 @@ class Machine_T:
             response["active_production"] = self.__active_production
             response["breakdown_percentage"] = self.__breakdown_pct
             response["last_production_duration_s"] = self.__last_production_duration_s
+            response["total_production"] = self.__total_production
 
             # PATCH : Very strange bug, the self.__name and self.is_running()
             # variable assign themselves as tuple in response["name"] and
@@ -401,10 +406,10 @@ class Machine_T:
             self.__evaluate_machine_status(self.__last_production_duration_s, product)
             self.__db[product_name] = product
 
-            # block this thread if paused
+            # block this thread if paused # TODO : USE CV here!
             while self.__is_paused:
                 self.__state = self.STATE.PAUSED
-                time.sleep(3)
+                time.sleep(1)
 
 
     # docs
@@ -440,6 +445,10 @@ class Machine_T:
 
         # produce the actual product by incrementing its produce (lol)
         product['total_production'] += 1
+
+        # increment the total production made by this machine considering all
+        # products
+        self.__total_production += 1
 
 
     # docs

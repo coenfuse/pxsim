@@ -1,0 +1,95 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "pyinstaller",
+            "args": [
+                "--specpath", "${workspaceFolder}/out/build",
+                "--workpath", "${workspaceFolder}/out/build",
+                "--distpath", "${workspaceFolder}/out/bin/",
+                "--noconfirm", 
+                "--onedir", 
+                "--console", 
+                "--name", "px_sim", 
+                "--clean",
+                // "--add-data", "${workspaceFolder}\\source\\dat\\web\\offset.html;.",     // Use colon ':' instead of semi-colon ';' in linux systems
+                "${workspaceFolder}/source/__main__.py"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+
+        {
+            "label": "Pythonic Builder",
+            "type" : "process",
+            "command" : "python",
+            "args":[
+                "${workspaceFolder}/extra/scripts/release.py",
+                "${workspaceFolder}/out/release/"
+            ],
+            "group" : {
+                "kind":"build",
+                "isDefault": true
+            }
+        }
+    ]
+}
+
+/*
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+
+    // For info on how the this tasks.json works with shell scripts,
+    // see https://www.ravsam.in/blog/script-as-a-task-using-vs-code-ide/
+    "version": "2.0.0",
+    "tasks": [
+
+        // Setup the system for project build
+        {
+            "label":"setup",
+            "type":"shell",
+            "command":"cmd",
+            "args": ["${workspaceFolder}/scripts/setup.bat"],
+        },
+
+        // Build the current project
+        {
+            // "dependsOn": ["setup"],
+            "label": "build",
+            "type": "shell",
+            "command": "cmd",
+            "args": ["${workspaceFolder}/scripts/build.bat"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+
+        // Run the current project
+        {
+            "dependsOn": ["build"],
+            "label":"run",
+            "type":"shell",
+            "command":"cmd",
+            "args": ["${workspaceFolder}/scripts/run.bat"],
+        },
+
+        // Pack the project for release and distribution
+        {
+            "dependsOn": ["build"],
+            "label": "release",
+            "type": "shell",
+            "command": "cmd",
+            "args": ["${workspaceFolder}/scripts/release.bat"],
+        }
+    ]
+}
+*/

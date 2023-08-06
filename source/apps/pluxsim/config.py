@@ -37,9 +37,8 @@ class Configurator(__BaseConfigurator):
     # docs
     # --------------------------------------------------------------------------
     def parse(self, config_file_path: str) -> ERC:
-        logger.debug(f"{self.__NAME} : parsing {config_file_path}")
         match super()._parse_config(config_file_path):
-            case 0 : return self.__inspect()
+            case 0 : return ERC.SUCCESS
             case 1 : return ERC.FAILURE
             case 2 : return ERC.FAILURE
             case 3 : return ERC.FAILURE
@@ -49,62 +48,35 @@ class Configurator(__BaseConfigurator):
     # docs
     # --------------------------------------------------------------------------
     def __inspect(self):
-        logger.debug(f"{self.__NAME} : inspecting")
+        print(f"{self.__NAME} : inspecting")
         
         config_obj = super()._get_config_object()
         for key in config_obj:
             if key != 'production_jobs':                                        # because of insane log tree
-                logger.debug(f"{self.__NAME} : using {key} = {config_obj[key]}")
+                print(f"{self.__NAME} : using {key} = {config_obj[key]}")
         
-        logger.debug(f"{self.__NAME} : inspect SUCCESS")
+        print(f"{self.__NAME} : inspect SUCCESS")
         return ERC.SUCCESS
 
 
     # docs
     # --------------------------------------------------------------------------
-    def get_webserver_loglvl(self) -> int:
-        return super()._get_value('web_loglvl')
-
-
-    # docs
-    # --------------------------------------------------------------------------
-    def get_host_ip(self) -> str:
-        return super()._get_value('host_ip')
-
-
-    # docs
-    # --------------------------------------------------------------------------
-    def get_host_port(self) -> int:
-        return abs(int(super()._get_value('host_port')))
-
+    def get_app_config(self) -> dict:
+        return super()._get_value("pxsim")
     
     # docs
     # --------------------------------------------------------------------------
-    def get_modbus_ip(self) -> str:
-        return super()._get_value('modbus_ip')
-
-
-    # docs
-    # --------------------------------------------------------------------------
-    def get_modbus_port(self) -> int:
-        return abs(int(super()._get_value('modbus_port')))
-
+    def get_webserver_config(self) -> dict:
+        return super()._get_value("http")
 
     # docs
     # --------------------------------------------------------------------------
-    def get_modbus_regcount(self) -> int:
-        return abs(int(super()._get_value('modbus_regcount')))
-
-    # docs
-    # --------------------------------------------------------------------------
-    def get_simulator_loglvl(self) -> int:
-        return super()._get_value('sim_loglvl')
-
+    def get_modbus_config(self) -> dict:
+        return super()._get_value("modbus")
     
     # docs
     # --------------------------------------------------------------------------
-    def get_simulator_machines(self) -> list[dict]:
-        return super()._get_value('machines')
-
-
+    def get_simulator_config(self) -> dict:
+        return super()._get_value("simulator")
+    
     # ..
