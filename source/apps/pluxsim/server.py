@@ -129,7 +129,7 @@ class HTTP_Server:
             response_code    = args[1]
 
             if int(response_code) < 400:
-                logger.debug(f"HTTPAPI : [{response_code}] - [{request_type}]{request_endpoint}")
+                logger.trace(f"HTTPAPI : [{response_code}] - [{request_type}]{request_endpoint}")
             else:
                 logger.error(f"HTTPAPI : [{response_code}] - [{request_type}]{request_endpoint}")
 
